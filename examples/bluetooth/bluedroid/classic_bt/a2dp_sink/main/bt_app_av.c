@@ -315,12 +315,13 @@ static void bt_av_hdl_avrc_ct_evt(uint16_t event, void *p_param)
         break;
     }
 }
-
+uint8_t share_volume = 0;
 static void volume_set_by_controller(uint8_t volume)
 {
     ESP_LOGI(BT_RC_TG_TAG, "Volume is set by remote controller %d%%\n", (uint32_t)volume * 100 / 0x7f);
     _lock_acquire(&s_volume_lock);
     s_volume = volume;
+    share_volume=volume;
     _lock_release(&s_volume_lock);
 }
 
@@ -342,15 +343,15 @@ static void volume_set_by_local_host(uint8_t volume)
 static void volume_change_simulation(void *arg)
 {
     ESP_LOGI(BT_RC_TG_TAG, "start volume change simulation");
-
+    s_volume=0x7f/2;
     static char testmsgs[2048];
     testmsgs[0]=0;
     for (;;) {
         vTaskDelay(10000 / portTICK_RATE_MS);
         vTaskGetRunTimeStats(testmsgs);
         ESP_LOGI(BT_RC_TG_TAG,"%s",testmsgs);
-        uint8_t volume = (s_volume + 5) & 0x7f;
-        volume_set_by_local_host(volume);
+        //uint8_t volume = (s_volume + 5) & 0x7f;
+        //volume_set_by_local_host(volume);
     }
 }
 

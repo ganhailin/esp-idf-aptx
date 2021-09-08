@@ -1245,7 +1245,7 @@ IRAM_ATTR size_t aptx_decode_16bit(struct aptx_context *ctx,
                 //output[opos+0] = ((uint32_t)samples[channel][sample] >>  0) & 0xFF;
             	//output[opos+1] = ((uint32_t)samples[channel][sample] >>  8) & 0xFF;
 
-                output[opos] = (int16_t)samples[channel][sample];
+                output[opos] = samples[channel][sample]>>8;
                 //output[opos] = ((int16_t)samples[channel][sample]) ^ 0x8000;
 
             }
