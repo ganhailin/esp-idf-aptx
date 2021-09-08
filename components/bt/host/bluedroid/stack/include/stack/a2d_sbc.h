@@ -132,7 +132,7 @@ extern tA2D_STATUS A2D_BldSbcInfo(UINT8 media_type, tA2D_SBC_CIE *p_ie,
 **                  Error status code, otherwise.
 ******************************************************************************/
 extern tA2D_STATUS A2D_ParsSbcInfo(tA2D_SBC_CIE *p_ie, UINT8 *p_info,
-                                   BOOLEAN for_caps);
+                                   BOOLEAN for_caps,char *caller_s);
 
 /******************************************************************************
 **

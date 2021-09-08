@@ -51,6 +51,8 @@
 #define A2D_MEDIA_CT_M12        0x01    /* MPEG-1, 2 Audio media codec type */
 #define A2D_MEDIA_CT_M24        0x02    /* MPEG-2, 4 AAC media codec type */
 #define A2D_MEDIA_CT_ATRAC      0x04    /* ATRAC family media codec type */
+// add by nishi
+#define VDP_MEDIA_CT_VEND		0xff	/* Non-VDP (Vender support Codec) */
 
 #define A2D_SUCCESS           0     /* Success */
 #define A2D_FAIL              0x0A  /* Failed */

@@ -84,8 +84,11 @@ void avdt_process_timeout(TIMER_LIST_ENT *p_tle)
     }
 
     if (event & AVDT_CCB_MKR) {
+        //avdt_ccb_event((tAVDT_CCB *) p_tle->param, (UINT8) (event & ~AVDT_CCB_MKR),
+        //               (tAVDT_CCB_EVT *) &err_code);
+        // test by nishi
         avdt_ccb_event((tAVDT_CCB *) p_tle->param, (UINT8) (event & ~AVDT_CCB_MKR),
-                       (tAVDT_CCB_EVT *) &err_code);
+                       (tAVDT_CCB_EVT *) &err_code,"avdt_process_timeout");
     } else {
         avdt_scb_event((tAVDT_SCB *) p_tle->param, event, NULL);
     }
@@ -175,6 +178,11 @@ void AVDT_SINK_Activate(void)
 {
     tAVDT_SCB           *p_scb = &avdt_cb.scb[0];
     int                 i;
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_SINK_Activate()");
+
+
     AVDT_TRACE_DEBUG("AVDT_SINK_Activate");
     /* for all allocated scbs */
     for (i = 0; i < AVDT_NUM_SEPS; i++, p_scb++) {
@@ -204,6 +212,11 @@ void AVDT_SINK_Deactivate(void)
 {
     tAVDT_SCB           *p_scb = &avdt_cb.scb[0];
     int                 i;
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_SINK_Deactivate()");
+
+
     AVDT_TRACE_DEBUG("AVDT_SINK_Deactivate");
     /* for all allocated scbs */
     for (i = 0; i < AVDT_NUM_SEPS; i++, p_scb++) {
@@ -248,12 +261,16 @@ UINT16 AVDT_CreateStream(UINT8 *p_handle, tAVDT_CS *p_cs)
     UINT16      result = AVDT_SUCCESS;
     tAVDT_SCB   *p_scb;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_CreateStream() *p_handle=%x",*p_handle);
+
+
     /* Verify parameters; if invalid, return failure */
     if (((p_cs->cfg.psc_mask & (~AVDT_PSC)) != 0) || (p_cs->p_ctrl_cback == NULL)) {
         result = AVDT_BAD_PARAMS;
     }
     /* Allocate scb; if no scbs, return failure */
-    else if ((p_scb = avdt_scb_alloc(p_cs)) == NULL) {
+    else if ((p_scb = avdt_scb_alloc(p_cs,"AVDT_CreateStream()")) == NULL) {
         result = AVDT_NO_RESOURCES;
     } else {
         *p_handle = avdt_scb_to_hdl(p_scb);
@@ -323,9 +340,13 @@ UINT16 AVDT_DiscoverReq(BD_ADDR bd_addr, tAVDT_SEP_INFO *p_sep_info,
     UINT16          result = AVDT_SUCCESS;
     tAVDT_CCB_EVT   evt;
 
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_DiscoverReq()");
+
     /* find channel control block for this bd addr; if none, allocate one */
     if ((p_ccb = avdt_ccb_by_bd(bd_addr)) == NULL) {
-        if ((p_ccb = avdt_ccb_alloc(bd_addr)) == NULL) {
+        if ((p_ccb = avdt_ccb_alloc(bd_addr,"AVDT_DiscoverReq()")) == NULL) {
             /* could not allocate channel control block */
             result = AVDT_NO_RESOURCES;
         }
@@ -341,7 +362,9 @@ UINT16 AVDT_DiscoverReq(BD_ADDR bd_addr, tAVDT_SEP_INFO *p_sep_info,
             evt.discover.p_sep_info = p_sep_info;
             evt.discover.num_seps = max_seps;
             evt.discover.p_cback = p_cback;
-            avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCOVER_REQ_EVT, &evt);
+            //avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCOVER_REQ_EVT, &evt);
+            // test by nishi
+            avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCOVER_REQ_EVT, &evt,"AVDT_DiscoverReq");
         }
     }
     return result;
@@ -362,6 +385,9 @@ static UINT16 avdt_get_cap_req(BD_ADDR bd_addr, tAVDT_CCB_API_GETCAP *p_evt)
     tAVDT_CCB       *p_ccb = NULL;
     UINT16          result = AVDT_SUCCESS;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::avdt_get_cap_req():#1 seid: %d", p_evt->single.seid);
+
     /* verify SEID */
     if ((p_evt->single.seid < AVDT_SEID_MIN) || (p_evt->single.seid > AVDT_SEID_MAX)) {
         AVDT_TRACE_ERROR("seid: %d\n", p_evt->single.seid);
@@ -369,7 +395,7 @@ static UINT16 avdt_get_cap_req(BD_ADDR bd_addr, tAVDT_CCB_API_GETCAP *p_evt)
     }
     /* find channel control block for this bd addr; if none, allocate one */
     else if ((p_ccb = avdt_ccb_by_bd(bd_addr)) == NULL) {
-        if ((p_ccb = avdt_ccb_alloc(bd_addr)) == NULL) {
+        if ((p_ccb = avdt_ccb_alloc(bd_addr,"avdt_get_cap_req()")) == NULL) {
             /* could not allocate channel control block */
             result = AVDT_NO_RESOURCES;
         }
@@ -382,7 +408,9 @@ static UINT16 avdt_get_cap_req(BD_ADDR bd_addr, tAVDT_CCB_API_GETCAP *p_evt)
         }
         /* send event to ccb */
         else {
-            avdt_ccb_event(p_ccb, AVDT_CCB_API_GETCAP_REQ_EVT, (tAVDT_CCB_EVT *)p_evt);
+            //avdt_ccb_event(p_ccb, AVDT_CCB_API_GETCAP_REQ_EVT, (tAVDT_CCB_EVT *)p_evt);
+            // test by nishi
+            avdt_ccb_event(p_ccb, AVDT_CCB_API_GETCAP_REQ_EVT, (tAVDT_CCB_EVT *)p_evt,"avdt_get_cap_req");
         }
     }
     return result;
@@ -475,6 +503,9 @@ UINT16 AVDT_DelayReport(UINT8 handle, UINT8 seid, UINT16 delay)
     UINT16          result = AVDT_SUCCESS;
     tAVDT_SCB_EVT   evt;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::avdt_get_cap_req():#1 AVDT_DelayReport handle=%x", handle);
+
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
         result = AVDT_BAD_HANDLE;
@@ -509,6 +540,11 @@ UINT16 AVDT_OpenReq(UINT8 handle, BD_ADDR bd_addr, UINT8 seid, tAVDT_CFG *p_cfg)
     UINT16          result = AVDT_SUCCESS;
     tAVDT_SCB_EVT   evt;
 
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_OpenReq():#1 handle=%x", handle);
+
+
     /* verify SEID */
     if ((seid < AVDT_SEID_MIN) || (seid > AVDT_SEID_MAX)) {
         result = AVDT_BAD_PARAMS;
@@ -519,7 +555,7 @@ UINT16 AVDT_OpenReq(UINT8 handle, BD_ADDR bd_addr, UINT8 seid, tAVDT_CFG *p_cfg)
     }
     /* find channel control block for this bd addr; if none, allocate one */
     else if ((p_ccb = avdt_ccb_by_bd(bd_addr)) == NULL) {
-        if ((p_ccb = avdt_ccb_alloc(bd_addr)) == NULL) {
+        if ((p_ccb = avdt_ccb_alloc(bd_addr,"AVDT_OpenReq()")) == NULL) {
             /* could not allocate channel control block */
             result = AVDT_NO_RESOURCES;
         }
@@ -554,6 +590,11 @@ UINT16 AVDT_ConfigRsp(UINT8 handle, UINT8 label, UINT8 error_code, UINT8 categor
     tAVDT_SCB_EVT   evt;
     UINT16          result = AVDT_SUCCESS;
     UINT8           event_code;
+
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_ConfigRsp():#1 handle=%x", handle);
+
 
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
@@ -602,6 +643,10 @@ UINT16 AVDT_StartReq(UINT8 *p_handles, UINT8 num_handles)
     UINT16          result = AVDT_SUCCESS;
     int             i;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_StartReq():#1 *p_handles=%x", *p_handles);
+
+
     if ((num_handles == 0) || (num_handles > AVDT_NUM_SEPS)) {
         result = AVDT_BAD_PARAMS;
     } else {
@@ -621,7 +666,9 @@ UINT16 AVDT_StartReq(UINT8 *p_handles, UINT8 num_handles)
             /* send event to ccb */
             memcpy(evt.msg.multi.seid_list, p_handles, num_handles);
             evt.msg.multi.num_seps = num_handles;
-            avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_API_START_REQ_EVT, &evt);
+            //avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_API_START_REQ_EVT, &evt);
+            // test by nishi
+            avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_API_START_REQ_EVT, &evt,"AVDT_StartReq");
         }
     }
     return result;
@@ -649,6 +696,10 @@ UINT16 AVDT_SuspendReq(UINT8 *p_handles, UINT8 num_handles)
     UINT16          result = AVDT_SUCCESS;
     int             i;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_SuspendReq():#1 *p_handles=%x", *p_handles);
+
+
     if ((num_handles == 0) || (num_handles > AVDT_NUM_SEPS)) {
         result = AVDT_BAD_PARAMS;
     } else {
@@ -668,7 +719,9 @@ UINT16 AVDT_SuspendReq(UINT8 *p_handles, UINT8 num_handles)
             /* send event to ccb */
             memcpy(evt.msg.multi.seid_list, p_handles, num_handles);
             evt.msg.multi.num_seps = num_handles;
-            avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_API_SUSPEND_REQ_EVT, &evt);
+            //avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_API_SUSPEND_REQ_EVT, &evt);
+            // test by nishi
+            avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_API_SUSPEND_REQ_EVT, &evt,"AVDT_SuspendReq");
         }
     }
 
@@ -693,6 +746,10 @@ UINT16 AVDT_CloseReq(UINT8 handle)
 {
     tAVDT_SCB       *p_scb;
     UINT16          result = AVDT_SUCCESS;
+
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_CloseReq():#1 handle=%x", handle);
 
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
@@ -728,6 +785,10 @@ UINT16 AVDT_ReconfigReq(UINT8 handle, tAVDT_CFG *p_cfg)
     UINT16          result = AVDT_SUCCESS;
     tAVDT_SCB_EVT   evt;
 
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_ReconfigReq():#1 handle=%x", handle);
+
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
         result = AVDT_BAD_HANDLE;
@@ -760,6 +821,10 @@ UINT16 AVDT_ReconfigRsp(UINT8 handle, UINT8 label, UINT8 error_code, UINT8 categ
     tAVDT_SCB       *p_scb;
     tAVDT_SCB_EVT   evt;
     UINT16          result = AVDT_SUCCESS;
+
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_ReconfigRsp():#1 handle=%x", handle);
 
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
@@ -796,6 +861,10 @@ UINT16 AVDT_SecurityReq(UINT8 handle, UINT8 *p_data, UINT16 len)
     UINT16          result = AVDT_SUCCESS;
     tAVDT_SCB_EVT   evt;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_SecurityReq():#1 handle=%x", handle);
+
+
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
         result = AVDT_BAD_HANDLE;
@@ -829,6 +898,11 @@ UINT16 AVDT_SecurityRsp(UINT8 handle, UINT8 label, UINT8 error_code,
     tAVDT_SCB       *p_scb;
     UINT16          result = AVDT_SUCCESS;
     tAVDT_SCB_EVT   evt;
+
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_SecurityRsp():#1 handle=%x", handle);
+
 
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
@@ -886,6 +960,10 @@ UINT16 AVDT_WriteReqOpt(UINT8 handle, BT_HDR *p_pkt, UINT32 time_stamp, UINT8 m_
     tAVDT_SCB       *p_scb;
     tAVDT_SCB_EVT   evt;
     UINT16          result = AVDT_SUCCESS;
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_WriteReqOpt():#1 handle=%x", handle);
+
 
     /* map handle to scb */
     if ((p_scb = avdt_scb_by_hdl(handle)) == NULL) {
@@ -960,9 +1038,13 @@ UINT16 AVDT_ConnectReq(BD_ADDR bd_addr, UINT8 sec_mask, tAVDT_CTRL_CBACK *p_cbac
     UINT16          result = AVDT_SUCCESS;
     tAVDT_CCB_EVT   evt;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_ConnectReq():#1 bd_addr=%x", (unsigned int)bd_addr);
+
+
     /* find channel control block for this bd addr; if none, allocate one */
     if ((p_ccb = avdt_ccb_by_bd(bd_addr)) == NULL) {
-        if ((p_ccb = avdt_ccb_alloc(bd_addr)) == NULL) {
+        if ((p_ccb = avdt_ccb_alloc(bd_addr,"AVDT_ConnectReq()")) == NULL) {
             /* could not allocate channel control block */
             result = AVDT_NO_RESOURCES;
         }
@@ -977,7 +1059,9 @@ UINT16 AVDT_ConnectReq(BD_ADDR bd_addr, UINT8 sec_mask, tAVDT_CTRL_CBACK *p_cbac
         /* send event to ccb */
         evt.connect.p_cback = p_cback;
         evt.connect.sec_mask = sec_mask;
-        avdt_ccb_event(p_ccb, AVDT_CCB_API_CONNECT_REQ_EVT, &evt);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_API_CONNECT_REQ_EVT, &evt);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_API_CONNECT_REQ_EVT, &evt,"AVDT_ConnectReq");
     }
     return result;
 }
@@ -1000,6 +1084,10 @@ UINT16 AVDT_DisconnectReq(BD_ADDR bd_addr, tAVDT_CTRL_CBACK *p_cback)
     UINT16          result = AVDT_SUCCESS;
     tAVDT_CCB_EVT   evt;
 
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_DisconnectReq():#1 bd_addr=%x", (unsigned int)bd_addr);
+
+
     /* find channel control block for this bd addr; if none, error */
     if ((p_ccb = avdt_ccb_by_bd(bd_addr)) == NULL) {
         result = AVDT_BAD_PARAMS;
@@ -1008,7 +1096,9 @@ UINT16 AVDT_DisconnectReq(BD_ADDR bd_addr, tAVDT_CTRL_CBACK *p_cback)
     if (result == AVDT_SUCCESS) {
         /* send event to ccb */
         evt.disconnect.p_cback = p_cback;
-        avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCONNECT_REQ_EVT, &evt);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCONNECT_REQ_EVT, &evt);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCONNECT_REQ_EVT, &evt,"AVDT_DisconnectReq");
     }
     return result;
 }
@@ -1135,6 +1225,10 @@ UINT16 AVDT_SendReport(UINT8 handle, AVDT_REPORT_TYPE type,
 #endif
     UINT32  ssrc;
     UINT16  len;
+
+    // test by nishi
+    APPL_TRACE_WARNING("avdt_api.c::AVDT_SendReport():#1 handle=%x", handle);
+
 
     /* map handle to scb && verify parameters */
     if (((p_scb = avdt_scb_by_hdl(handle)) != NULL)

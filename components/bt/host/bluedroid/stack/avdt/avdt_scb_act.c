@@ -33,6 +33,10 @@
 #include "stack/btu.h"
 #include "osi/allocator.h"
 
+// add by nishi
+#include "stack/a2d_api.h"
+
+
 #if (defined(AVDT_INCLUDED) && AVDT_INCLUDED == TRUE)
 
 /* This table is used to lookup the callback event that matches a particular
@@ -243,7 +247,7 @@ void avdt_scb_hdl_open_rsp(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 *******************************************************************************/
 void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 {
-    UINT8   *p, *p_start;
+    UINT8   *p, *p_start,*p0;
     UINT8   o_v, o_p, o_x, o_cc;
     UINT8   m_pt;
     UINT8   marker;
@@ -253,34 +257,50 @@ void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
     UINT16  ex_len;
     UINT8   pad_len = 0;
 
+    // DEBUG by nishi
+    AVDT_TRACE_DEBUG("%s(): #1 p_data->p_pkt->len=x%x, p_data->p_pkt->offset=x%x",__func__,p_data->p_pkt->len,p_data->p_pkt->offset);
+
     p = p_start = (UINT8 *)(p_data->p_pkt + 1) + p_data->p_pkt->offset;
 
-    /* parse media packet header */
-    AVDT_MSG_PRS_OCTET1(p, o_v, o_p, o_x, o_cc);
-    AVDT_MSG_PRS_M_PT(p, m_pt, marker);
-    BE_STREAM_TO_UINT16(seq, p);
-    BE_STREAM_TO_UINT32(time_stamp, p);
-    p += 4;
+    AVDT_TRACE_DEBUG("\tbefore p=%p",p);
 
-    UNUSED(o_v);
 
-    /* skip over any csrc's in packet */
-    p += o_cc * 4;
+    // APTX codec ������  add by nishi 2019.2.5
+    if(p_scb->cs.cfg.codec_info[AVDT_CODEC_TYPE_INDEX]==VDP_MEDIA_CT_VEND){
+    	pad_len=0;
+    	offset=0;
+    	p0  = (UINT8 *)(p_data->p_pkt + 1);
 
-    /* check for and skip over extension header */
-    if (o_x) {
-        p += 2;
-        BE_STREAM_TO_UINT16(ex_len, p);
-        p += ex_len * 4;
+    	BE_STREAM_TO_UINT32(time_stamp, p0);
+    	m_pt=0;
+    	seq=0;
+    	marker=0;
     }
+    // SBC codec ������
+    else{
+    	/* parse media packet header */
+    	AVDT_MSG_PRS_OCTET1(p, o_v, o_p, o_x, o_cc);
+    	AVDT_MSG_PRS_M_PT(p, m_pt, marker);
+    	BE_STREAM_TO_UINT16(seq, p);
+    	BE_STREAM_TO_UINT32(time_stamp, p);
+    	p += 4;
 
-    /* save our new offset */
-    offset = (UINT16) (p - p_start);
-
-    /* adjust length for any padding at end of packet */
-    if (o_p) {
-        /* padding length in last byte of packet */
-        pad_len =  *(p_start + p_data->p_pkt->len);
+    	UNUSED(o_v);
+    	/* skip over any csrc's in packet */
+    	p += o_cc * 4;
+    	/* check for and skip over extension header */
+    	if (o_x) {
+    	    p += 2;
+    	    BE_STREAM_TO_UINT16(ex_len, p);
+    	    p += ex_len * 4;
+    	}
+    	/* save our new offset */
+    	offset = (UINT16) (p - p_start);
+    	/* adjust length for any padding at end of packet */
+    	if (o_p) {
+    	    /* padding length in last byte of packet */
+    	    pad_len =  *(p_start + p_data->p_pkt->len);
+    	}
     }
 
     /* do sanity check */
@@ -297,6 +317,11 @@ void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
         if (p_scb->cs.p_data_cback != NULL) {
             /* report sequence number */
             p_data->p_pkt->layer_specific = seq;
+
+            // DEBUG by nishi
+            AVDT_TRACE_DEBUG("%s(): #2  call p_scb->cs.p_data_cback()",__func__);
+
+            // bta_av_stream_data_cback()::bta_av_aact.c ���R�[�������B by nishi 2019.1.30
             (*p_scb->cs.p_data_cback)(avdt_scb_to_hdl(p_scb), p_data->p_pkt,
                                       time_stamp, (UINT8)(m_pt | (marker << 7)));
         } else {
@@ -424,6 +449,10 @@ void avdt_scb_hdl_pkt_frag(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
     UINT8   *p_payload; /* pointer to media fragment payload in the buffer */
     UINT32  payload_len; /* payload length */
     UINT16  frag_len; /* fragment length */
+
+    // DEBUG by nishi
+    AVDT_TRACE_DEBUG("%s(): #1 p_data->p_pkt->len=x%x, p_data->p_pkt->offset=x%x",__func__,p_data->p_pkt->len,p_data->p_pkt->offset);
+
 
     p = (UINT8 *)(p_data->p_pkt + 1) + p_data->p_pkt->offset;
     p_end = p + p_data->p_pkt->len;
@@ -828,7 +857,9 @@ void avdt_scb_hdl_setconfig_rej(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
     avdt_scb_clr_vars(p_scb, p_data);
 
     /* tell ccb we're done with signaling channel */
-    avdt_ccb_event(avdt_ccb_by_idx(p_data->msg.hdr.ccb_idx), AVDT_CCB_UL_CLOSE_EVT, NULL);
+    //avdt_ccb_event(avdt_ccb_by_idx(p_data->msg.hdr.ccb_idx), AVDT_CCB_UL_CLOSE_EVT, NULL);
+    // test by nishi
+    avdt_ccb_event(avdt_ccb_by_idx(p_data->msg.hdr.ccb_idx), AVDT_CCB_UL_CLOSE_EVT, NULL,"avdt_scb_hdl_setconfig_rej");
 
     /* call application callback */
     (*p_scb->cs.p_ctrl_cback)(avdt_scb_to_hdl(p_scb),
@@ -989,7 +1020,9 @@ void avdt_scb_hdl_tc_close(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 
     if ((p_scb->role == AVDT_CLOSE_INT) || (p_scb->role == AVDT_OPEN_INT)) {
         /* tell ccb we're done with signaling channel */
-        avdt_ccb_event(p_ccb, AVDT_CCB_UL_CLOSE_EVT, NULL);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_UL_CLOSE_EVT, NULL);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_UL_CLOSE_EVT, NULL,"avdt_scb_hdl_tc_close");
     }
     event = (p_scb->role == AVDT_CLOSE_INT) ? AVDT_CLOSE_CFM_EVT : AVDT_CLOSE_IND_EVT;
     p_scb->role = AVDT_CLOSE_ACP;
@@ -1636,7 +1669,9 @@ void avdt_scb_snd_setconfig_req(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
     avdt_msg_send_cmd(p_scb->p_ccb, p_scb, AVDT_SIG_SETCONFIG, &p_data->msg);
 
     /* tell ccb to open channel */
-    avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_UL_OPEN_EVT, NULL);
+    //avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_UL_OPEN_EVT, NULL);
+    // test by nishi
+    avdt_ccb_event(p_scb->p_ccb, AVDT_CCB_UL_OPEN_EVT, NULL,"avdt_scb_snd_setconfig_req");
 }
 
 /*******************************************************************************

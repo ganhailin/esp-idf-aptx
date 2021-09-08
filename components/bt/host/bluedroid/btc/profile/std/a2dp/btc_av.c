@@ -1238,12 +1238,61 @@ static void bte_av_callback(tBTA_AV_EVT event, tBTA_AV *p_data)
 }
 
 #if BTC_AV_SINK_INCLUDED
+
+#define TEST_NISI_8
+#ifdef TEST_NISI_8
+//debug by nishi
+static char* bta_av_ev_tabl_nishi[]={
+	"BTA_AV_ENABLE_EVT",	// 0       /* AV enabled */
+	"BTA_AV_REGISTER_EVT",  // 1       /* registered to AVDT */
+	"BTA_AV_OPEN_EVT",		// 2       /* connection opened */
+	"BTA_AV_CLOSE_EVT",		// 3       /* connection closed */
+	"BTA_AV_START_EVT",		// 4       /* stream data transfer started */
+	"BTA_AV_STOP_EVT",      // 5       /* stream data transfer stopped */
+	"BTA_AV_PROTECT_REQ_EVT",  // 6       /* content protection request */
+	"BTA_AV_PROTECT_RSP_EVT",  // 7       /* content protection response */
+	"BTA_AV_RC_OPEN_EVT",      // 8       /* remote control channel open */
+	"BTA_AV_RC_CLOSE_EVT",     // 9       /* remote control channel closed */
+	"BTA_AV_REMOTE_CMD_EVT",   // 10      /* remote control command */
+	"BTA_AV_REMOTE_RSP_EVT",   // 11      /* remote control response */
+	"BTA_AV_VENDOR_CMD_EVT",   // 12      /* vendor dependent remote control command */
+	"BTA_AV_VENDOR_RSP_EVT",   // 13      /* vendor dependent remote control response */
+	"BTA_AV_RECONFIG_EVT",     // 14      /* reconfigure response */
+	"BTA_AV_SUSPEND_EVT",      // 15      /* suspend response */
+	"BTA_AV_PENDING_EVT",      // 16      /* incoming connection pending:
+                               //          * signal channel is open and stream is not open
+                               //          * after BTA_AV_SIG_TIME_VAL ms */
+	"BTA_AV_META_MSG_EVT",     // 17      /* metadata messages */
+	"BTA_AV_REJECT_EVT",       // 18      /* incoming connection rejected */
+	"BTA_AV_RC_FEAT_EVT",      // 19      /* remote control channel peer supported features update */
+	"BTA_AV_MEDIA_SINK_CFG_EVT",    //20      /* command to configure codec */
+	"BTA_AV_MEDIA_DATA_EVT",   //21      /* sending data to Media Task */
+    "BTC_AV_CONNECT_REQ_EVT",	// = BTA_AV_MAX_EVT,
+    "BTC_AV_DISCONNECT_REQ_EVT",
+    "BTC_AV_START_STREAM_REQ_EVT",
+    "BTC_AV_STOP_STREAM_REQ_EVT",
+    "BTC_AV_SUSPEND_STREAM_REQ_EVT",
+    "BTC_AV_SINK_CONFIG_REQ_EVT"
+};
+
+
+static char *get_bta_av_ev_tabl_nishi(UINT8 i){
+	return bta_av_ev_tabl_nishi[i];
+}
+#endif
+
 static void bte_av_media_callback(tBTA_AV_EVT event, tBTA_AV_MEDIA *p_data)
 {
     btc_sm_state_t state;
     UINT8 que_len;
     tA2D_STATUS a2d_status;
     tA2D_SBC_CIE sbc_cie;
+
+    UINT8 *c_info=(UINT8 *)p_data;
+
+	// Debug by nishi
+    BTC_TRACE_DEBUG("%s(): event=%s", __func__, get_bta_av_ev_tabl_nishi(event));
+
 
     if (event == BTA_AV_MEDIA_DATA_EVT) { /* Switch to BTC_MEDIA context */
         state = btc_sm_get_state(btc_av_cb.sm_handle);
@@ -1257,25 +1306,62 @@ static void bte_av_media_callback(tBTA_AV_EVT event, tBTA_AV_MEDIA *p_data)
     }
 
     if (event == BTA_AV_MEDIA_SINK_CFG_EVT) {
+    	// add by nishi
+        APPL_TRACE_WARNING("%s(): #3 passed",__func__);
+
         /* send a command to BT Media Task */
         btc_a2dp_sink_reset_decoder((UINT8 *)p_data);
 
-        /* currently only supportes SBC */
-        a2d_status = A2D_ParsSbcInfo(&sbc_cie, (UINT8 *)p_data, FALSE);
-        if (a2d_status == A2D_SUCCESS) {
-            btc_msg_t msg;
-            btc_av_args_t arg;
+        a2d_status=A2D_FAIL;
 
-            msg.sig = BTC_SIG_API_CB;
-            msg.pid = BTC_PID_A2DP;
-            msg.act = BTC_AV_SINK_CONFIG_REQ_EVT;
+    	// Debug by nishi
+        //BTC_TRACE_DEBUG("%s(): #4 c_info=[%x:%x:%x:%x]", __func__,
+        //		c_info[0],c_info[1],c_info[2],c_info[3]);
 
-            memset(&arg, 0, sizeof(btc_av_args_t));
-            arg.mcc.type = ESP_A2D_MCT_SBC;
-            memcpy(arg.mcc.cie.sbc, (uint8_t *)p_data + 3, ESP_A2D_CIE_LEN_SBC);
-            btc_transfer_context(&msg, &arg, sizeof(btc_av_args_t), NULL);
-        } else {
-            BTC_TRACE_ERROR("ERROR dump_codec_info A2D_ParsSbcInfo fail:%d\n", a2d_status);
+        // SBC
+        if(c_info[2]==BTA_AV_CODEC_SBC){
+            /* currently only supportes SBC */
+            a2d_status = A2D_ParsSbcInfo(&sbc_cie, (UINT8 *)p_data, FALSE,"bte_av_media_callback() 1");
+            if (a2d_status == A2D_SUCCESS) {
+            	// add by nishi
+                APPL_TRACE_WARNING("%s(): #4 Packets in SBC",__func__);
+                btc_msg_t msg;
+                btc_av_args_t arg;
+
+                msg.sig = BTC_SIG_API_CB;
+                msg.pid = BTC_PID_A2DP;
+                msg.act = BTC_AV_SINK_CONFIG_REQ_EVT;
+
+                memset(&arg, 0, sizeof(btc_av_args_t));
+                arg.mcc.type = ESP_A2D_MCT_SBC;
+                memcpy(arg.mcc.cie.sbc, (uint8_t *)p_data + 3, ESP_A2D_CIE_LEN_SBC);
+                btc_transfer_context(&msg, &arg, sizeof(btc_av_args_t), NULL);
+            }
+        }
+        // APTX
+        else if(c_info[2]==BTA_AV_CODEC_VEND){
+        	a2d_status = A2DP_ParseInfoAptx((tA2DP_APTX_CIE*)&sbc_cie, (uint8_t *)p_data, FALSE,"bte_av_media_callback() 2");
+        	if(a2d_status == A2D_SUCCESS){
+        		// add by nishi
+        		//ESP_LOGI(BTC_AV_TAG, "bte_av_media_callback() : #4 Packets in APTX");
+        		APPL_TRACE_WARNING("%s(): #5 Packets in APTX", __func__);
+        		// next lines dummy
+        		btc_msg_t msg;
+        		btc_av_args_t arg;
+
+        		msg.sig = BTC_SIG_API_CB;
+        		msg.pid = BTC_PID_A2DP;
+        		msg.act = BTC_AV_SINK_CONFIG_REQ_EVT;
+
+        		memset(&arg, 0, sizeof(btc_av_args_t));
+        		//arg.mcc.type = ESP_A2D_MCT_SBC;
+        		arg.mcc.type = ESP_A2D_MCT_NON_A2DP;
+        		memcpy(arg.mcc.cie.aptx, (uint8_t *)p_data + 3, ESP_A2D_CIE_LEN_APTX);
+        		btc_transfer_context(&msg, &arg, sizeof(btc_av_args_t), NULL);
+        	}
+        }
+        if(a2d_status != A2D_SUCCESS){
+    		BTC_TRACE_ERROR("%s(): ERROR unsupport codec id fail:%d\n",__func__, a2d_status);
         }
     }
     UNUSED(que_len);
@@ -1447,6 +1533,10 @@ void btc_av_clear_remote_suspend_flag(void)
 void btc_a2dp_call_handler(btc_msg_t *msg)
 {
     btc_av_args_t *arg = (btc_av_args_t *)(msg->arg);
+
+	// Debug by nishi
+    BTC_TRACE_DEBUG("%s(): msg->act=%x:%s", __func__, msg->act,get_bta_av_ev_tabl_nishi(msg->act));
+
     switch (msg->act) {
 #if BTC_AV_SINK_INCLUDED
     case BTC_AV_SINK_CONFIG_REQ_EVT: {

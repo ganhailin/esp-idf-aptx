@@ -177,7 +177,9 @@ void avdt_ccb_hdl_discover_cmd(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data)
     }
 
     /* send response */
-    avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCOVER_RSP_EVT, p_data);
+    //avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCOVER_RSP_EVT, p_data);
+    // test by nishi
+    avdt_ccb_event(p_ccb, AVDT_CCB_API_DISCOVER_RSP_EVT, p_data,"avdt_ccb_hdl_discover_cmd");
 }
 
 /*******************************************************************************
@@ -224,7 +226,9 @@ void avdt_ccb_hdl_getcap_cmd(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data)
 
     p_data->msg.svccap.p_cfg = &p_scb->cs.cfg;
 
-    avdt_ccb_event(p_ccb, AVDT_CCB_API_GETCAP_RSP_EVT, p_data);
+    //avdt_ccb_event(p_ccb, AVDT_CCB_API_GETCAP_RSP_EVT, p_data);
+    // test by nishi
+    avdt_ccb_event(p_ccb, AVDT_CCB_API_GETCAP_RSP_EVT, p_data,"avdt_ccb_hdl_getcap_cmd");
 }
 
 /*******************************************************************************
@@ -271,7 +275,9 @@ void avdt_ccb_hdl_start_cmd(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data)
                                  p_data->msg.multi.num_seps, &err_code);
     if (seid == 0 && err_code == 0) {
         /* we're ok, send response */
-        avdt_ccb_event(p_ccb, AVDT_CCB_API_START_RSP_EVT, p_data);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_API_START_RSP_EVT, p_data);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_API_START_RSP_EVT, p_data,"avdt_ccb_hdl_start_cmd");
     } else {
         /* not ok, send reject */
         p_data->msg.hdr.err_code = err_code;
@@ -339,7 +345,9 @@ void avdt_ccb_hdl_suspend_cmd(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data)
                                 p_data->msg.multi.num_seps, &err_code)) == 0 &&
             err_code == 0) {
         /* we're ok, send response */
-        avdt_ccb_event(p_ccb, AVDT_CCB_API_SUSPEND_RSP_EVT, p_data);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_API_SUSPEND_RSP_EVT, p_data);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_API_SUSPEND_RSP_EVT, p_data,"avdt_ccb_hdl_suspend_cmd");
     } else {
         /* not ok, send reject */
         p_data->msg.hdr.err_code = err_code;
@@ -699,7 +707,9 @@ void avdt_ccb_cmd_fail(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data)
         evt = avdt_msg_rej_2_evt[p_ccb->p_curr_cmd->event - 1];
 
         if (evt & AVDT_CCB_MKR) {
-            avdt_ccb_event(p_ccb, (UINT8) (evt & ~AVDT_CCB_MKR), (tAVDT_CCB_EVT *) &msg);
+            //avdt_ccb_event(p_ccb, (UINT8) (evt & ~AVDT_CCB_MKR), (tAVDT_CCB_EVT *) &msg);
+            // test by nishi
+            avdt_ccb_event(p_ccb, (UINT8) (evt & ~AVDT_CCB_MKR), (tAVDT_CCB_EVT *) &msg,"avdt_ccb_cmd_fail");
         } else {
             /* we get the scb out of the current cmd */
             p_scb = avdt_scb_by_hdl(*((UINT8 *)(p_ccb->p_curr_cmd + 1)));
@@ -922,7 +932,9 @@ void avdt_ccb_chk_reconn(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data)
         avdt_ccb_cmd_fail(p_ccb, (tAVDT_CCB_EVT *) &err_code);
 
         /* reopen the signaling channel */
-        avdt_ccb_event(p_ccb, AVDT_CCB_UL_OPEN_EVT, NULL);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_UL_OPEN_EVT, NULL);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_UL_OPEN_EVT, NULL,"avdt_ccb_chk_reconn");
     } else {
         avdt_ccb_ll_closed(p_ccb, NULL);
     }

@@ -174,6 +174,33 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
                      a2d->audio_cfg.mcc.cie.sbc[3]);
             ESP_LOGI(BT_AV_TAG, "Audio player configured, sample rate=%d", sample_rate);
         }
+        // add by nishi for APTX support
+        else if(a2d->audio_cfg.mcc.type == ESP_A2D_MCT_NON_A2DP){
+            int sample_rate = 16000;
+            char oct0 = a2d->audio_cfg.mcc.cie.aptx[6];	// sample rate | channel Mode
+            if (oct0 & (0x01 << 6)) {
+                sample_rate = 32000;
+            }
+            else if (oct0 & (0x01 << 5)) {
+                sample_rate = 44100;
+            }
+            else if (oct0 & (0x01 << 4)) {
+                sample_rate = 48000;
+            }
+            //sample_rate = 48000;
+            i2s_set_clk(0, sample_rate, 16, 2);
+            //i2s_set_clk(0, sample_rate, 24, 2);
+
+            ESP_LOGI(BT_AV_TAG, "Configure audio player %x-%x-%x-%x-%x-%x-%x",
+                     a2d->audio_cfg.mcc.cie.sbc[0],		// Vender id 4 byte
+                     a2d->audio_cfg.mcc.cie.sbc[1],
+                     a2d->audio_cfg.mcc.cie.sbc[2],
+                     a2d->audio_cfg.mcc.cie.sbc[3],
+                     a2d->audio_cfg.mcc.cie.sbc[4],		// codecId 2 byte
+                     a2d->audio_cfg.mcc.cie.sbc[5],
+                     a2d->audio_cfg.mcc.cie.sbc[6]);	// smaple rate | channel Mode
+            ESP_LOGI(BT_AV_TAG, "Audio player configured, sample rate=%d", sample_rate);
+        }
         break;
     }
     case ESP_A2D_PROF_STATE_EVT: {
@@ -316,9 +343,12 @@ static void volume_change_simulation(void *arg)
 {
     ESP_LOGI(BT_RC_TG_TAG, "start volume change simulation");
 
+    static char testmsgs[2048];
+    testmsgs[0]=0;
     for (;;) {
         vTaskDelay(10000 / portTICK_RATE_MS);
-
+        vTaskGetRunTimeStats(testmsgs);
+        ESP_LOGI(BT_RC_TG_TAG,"%s",testmsgs);
         uint8_t volume = (s_volume + 5) & 0x7f;
         volume_set_by_local_host(volume);
     }

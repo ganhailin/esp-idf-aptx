@@ -155,6 +155,27 @@ const tAVDT_MSG_BLD avdt_msg_bld_cmd[] = {
     avdt_msg_bld_delay_rpt        /* delay report */
 };
 
+
+// test by nishi
+#if AVDT_DEBUG == TRUE
+const char *avdt_msg_bld_rsp_str[] = {
+    "avdt_msg_bld_discover_rsp",    /* discover */
+    "avdt_msg_bld_svccap",          /* get capabilities */
+    "avdt_msg_bld_none",            /* set configuration */
+    "avdt_msg_bld_all_svccap",      /* get configuration */
+    "avdt_msg_bld_none",            /* reconfigure */
+    "avdt_msg_bld_none",            /* open */
+    "avdt_msg_bld_none",            /* start */
+    "avdt_msg_bld_none",            /* close */
+    "avdt_msg_bld_none",            /* suspend */
+    "avdt_msg_bld_none",            /* abort */
+    "avdt_msg_bld_security_rsp",    /* security control */
+    "avdt_msg_bld_all_svccap",      /* get all capabilities */
+    "avdt_msg_bld_none"             /* delay report */
+};
+#endif
+
+
 /* function table for building response messages */
 const tAVDT_MSG_BLD avdt_msg_bld_rsp[] = {
     avdt_msg_bld_discover_rsp,    /* discover */
@@ -1441,7 +1462,9 @@ void avdt_msg_send_cmd(tAVDT_CCB *p_ccb, void *p_scb, UINT8 sig_id, tAVDT_MSG *p
 
     /* queue message and trigger ccb to send it */
     fixed_queue_enqueue(p_ccb->cmd_q, p_buf, FIXED_QUEUE_MAX_TIMEOUT);
-    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    //avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    // test by nishi
+    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL,"avdt_msg_send_cmd");
 }
 
 
@@ -1476,6 +1499,11 @@ void avdt_msg_send_rsp(tAVDT_CCB *p_ccb, UINT8 sig_id, tAVDT_MSG *p_params)
     p_buf->offset = AVDT_MSG_OFFSET;
     p_start = p = (UINT8 *)(p_buf + 1) + p_buf->offset;
 
+    // test by nishi
+	#if AVDT_DEBUG == TRUE
+	AVDT_TRACE_EVENT("%s(): #2 sig_id-1=%x:%s",__func__, sig_id-1,avdt_msg_bld_rsp_str[sig_id-1]);
+	#endif
+
     /* execute parameter building function to build message */
     (*avdt_msg_bld_rsp[sig_id - 1])(&p, p_params);
 
@@ -1488,7 +1516,9 @@ void avdt_msg_send_rsp(tAVDT_CCB *p_ccb, UINT8 sig_id, tAVDT_MSG *p_params)
 
     /* queue message and trigger ccb to send it */
     fixed_queue_enqueue(p_ccb->rsp_q, p_buf, FIXED_QUEUE_MAX_TIMEOUT);
-    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    //avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    // test by nishi
+    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL,"avdt_msg_send_rsp");
 }
 
 
@@ -1548,7 +1578,9 @@ void avdt_msg_send_rej(tAVDT_CCB *p_ccb, UINT8 sig_id, tAVDT_MSG *p_params)
 
     /* queue message and trigger ccb to send it */
     fixed_queue_enqueue(p_ccb->rsp_q, p_buf, FIXED_QUEUE_MAX_TIMEOUT);
-    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    //avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    // test by nishi
+    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL,"avdt_msg_send_rej");
 }
 
 /*******************************************************************************
@@ -1592,7 +1624,9 @@ void avdt_msg_send_grej(tAVDT_CCB *p_ccb, UINT8 sig_id, tAVDT_MSG *p_params)
 
     /* queue message and trigger ccb to send it */
     fixed_queue_enqueue(p_ccb->rsp_q, p_buf, FIXED_QUEUE_MAX_TIMEOUT);
-    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    //avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL);
+    // test by nishi
+    avdt_ccb_event(p_ccb, AVDT_CCB_SENDMSG_EVT, NULL,"avdt_msg_send_grej");
 }
 
 /*******************************************************************************
@@ -1637,7 +1671,10 @@ void avdt_msg_ind(tAVDT_CCB *p_ccb, BT_HDR *p_buf)
 
     UNUSED(pkt_type);
 
-    AVDT_TRACE_DEBUG("msg_type=%d, sig=%d\n", msg_type, sig);
+    //AVDT_TRACE_DEBUG("msg_type=%d, sig=%d\n", msg_type, sig);
+    // change by nishi
+    AVDT_TRACE_DEBUG("avdt_msg_ind():#1 msg_type=%d, sig=%d\n", msg_type, sig);
+
     /* set up label and ccb_idx in message hdr */
     msg.hdr.label = label;
     msg.hdr.ccb_idx = avdt_ccb_to_idx(p_ccb);
@@ -1748,7 +1785,9 @@ void avdt_msg_ind(tAVDT_CCB *p_ccb, BT_HDR *p_buf)
     if (ok) {
         /* if it's a ccb event send to ccb */
         if (evt & AVDT_CCB_MKR) {
-            avdt_ccb_event(p_ccb, (UINT8)(evt & ~AVDT_CCB_MKR), (tAVDT_CCB_EVT *) &msg);
+            //avdt_ccb_event(p_ccb, (UINT8)(evt & ~AVDT_CCB_MKR), (tAVDT_CCB_EVT *) &msg);
+            // test by nishi
+            avdt_ccb_event(p_ccb, (UINT8)(evt & ~AVDT_CCB_MKR), (tAVDT_CCB_EVT *) &msg,"avdt_msg_ind(): #2");
         }
         /* if it's a scb event */
         else {
@@ -1777,7 +1816,9 @@ void avdt_msg_ind(tAVDT_CCB *p_ccb, BT_HDR *p_buf)
     ** cmd msg buffer and handle cmd queue
     */
     if (handle_rsp) {
-        avdt_ccb_event(p_ccb, AVDT_CCB_RCVRSP_EVT, NULL);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_RCVRSP_EVT, NULL);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_RCVRSP_EVT, NULL,"avdt_msg_ind(): #3");
     }
 }
 

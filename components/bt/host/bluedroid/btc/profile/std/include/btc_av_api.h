@@ -29,6 +29,8 @@
 #include "bta/bta_av_api.h"
 #include "stack/a2d_api.h"
 #include "stack/a2d_sbc.h"
+// add by nishi
+#include "stack/a2dp_vendor_aptx.h"
 
 #if (BTC_AV_INCLUDED == TRUE)
 /*****************************************************************************

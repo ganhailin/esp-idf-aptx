@@ -31,6 +31,10 @@
 #include "stack/a2d_sbc.h"
 #include "common/bt_defs.h"
 
+// add by nishi
+#include "common/bt_trace.h"
+
+
 #if (defined(A2D_INCLUDED) && A2D_INCLUDED == TRUE)
 
 /******************************************************************************
@@ -103,7 +107,8 @@ tA2D_STATUS A2D_BldSbcInfo(UINT8 media_type, tA2D_SBC_CIE *p_ie, UINT8 *p_result
 ** Returns          A2D_SUCCESS if function execution succeeded.
 **                  Error status code, otherwise.
 ******************************************************************************/
-tA2D_STATUS A2D_ParsSbcInfo(tA2D_SBC_CIE *p_ie, UINT8 *p_info, BOOLEAN for_caps)
+//tA2D_STATUS A2D_ParsSbcInfo(tA2D_SBC_CIE *p_ie, UINT8 *p_info, BOOLEAN for_caps)
+tA2D_STATUS A2D_ParsSbcInfo(tA2D_SBC_CIE *p_ie, UINT8 *p_info, BOOLEAN for_caps,char *caller_s)
 {
     tA2D_STATUS status;
     UINT8   losc;
@@ -113,10 +118,15 @@ tA2D_STATUS A2D_ParsSbcInfo(tA2D_SBC_CIE *p_ie, UINT8 *p_info, BOOLEAN for_caps)
     } else {
         losc    = *p_info++;
         p_info++;
+
+    	// add by nishi
+        APPL_TRACE_WARNING("a2d_sbc.c::A2D_ParsSbcInfo() : #3 called!! losc=%x, p_info=%x,caller_s=%s",losc,*p_info,caller_s);
+
         /* If the function is called for the wrong Media Type or Media Codec Type */
         if (losc != A2D_SBC_INFO_LEN || *p_info != A2D_MEDIA_CT_SBC) {
             status = A2D_WRONG_CODEC;
         } else {
+            APPL_TRACE_WARNING("a2d_sbc.c::A2D_ParsSbcInfo() : #4 passed");
             p_info++;
             p_ie->samp_freq = *p_info & A2D_SBC_IE_SAMP_FREQ_MSK;
             p_ie->ch_mode   = *p_info & A2D_SBC_IE_CH_MD_MSK;
@@ -154,7 +164,12 @@ tA2D_STATUS A2D_ParsSbcInfo(tA2D_SBC_CIE *p_ie, UINT8 *p_info, BOOLEAN for_caps)
                     status = A2D_BAD_ALLOC_MTHD;
                 }
             }
+            // test by nishi ��芸����     status = A2D_SUCCESS �ŏI��点�܂��B
+            //if(A2D_MEDIA_CT_SBC==0xff){
+            //	status = A2D_SUCCESS;
+            //}
         }
+        APPL_TRACE_WARNING("a2d_sbc.c::A2D_ParsSbcInfo() : #99 return status=%x",status);
     }
     return status;
 }

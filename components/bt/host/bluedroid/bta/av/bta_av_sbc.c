@@ -400,8 +400,10 @@ UINT8 bta_av_sbc_cfg_for_cap(UINT8 *p_peer, tA2D_SBC_CIE *p_cap, tA2D_SBC_CIE *p
     tA2D_SBC_CIE    peer_cie;
     UNUSED(p_cap);
 
+	// add by nishi
+    APPL_TRACE_WARNING("bta_av_sbc.c::bta_av_sbc_cfg_for_cap() : #1 called!!");
     /* parse peer capabilities */
-    if ((status = A2D_ParsSbcInfo(&peer_cie, p_peer, TRUE)) != 0) {
+    if ((status = A2D_ParsSbcInfo(&peer_cie, p_peer, TRUE,"bta_av_sbc_cfg_for_cap():1")) != 0) {
         return status;
     }
 
@@ -477,8 +479,10 @@ UINT8 bta_av_sbc_cfg_matches_cap(UINT8 *p_cfg, tA2D_SBC_CIE *p_cap)
     UINT8           status = 0;
     tA2D_SBC_CIE    cfg_cie;
 
+	// add by nishi
+    APPL_TRACE_WARNING("bta_av_sbc.c::bta_av_sbc_cfg_matches_cap() : #1 called!!");
     /* parse configuration */
-    if ((status = A2D_ParsSbcInfo(&cfg_cie, p_cfg, TRUE)) != 0) {
+    if ((status = A2D_ParsSbcInfo(&cfg_cie, p_cfg, TRUE,"bta_av_sbc_cfg_matches_cap():1")) != 0) {
         APPL_TRACE_ERROR(" bta_av_sbc_cfg_matches_cap Parsing Failed %d", status);
         return status;
     }
@@ -521,7 +525,10 @@ UINT8 bta_av_sbc_cfg_matches_cap(UINT8 *p_cfg, tA2D_SBC_CIE *p_cap)
     else if (cfg_cie.min_bitpool < p_cap->min_bitpool) {
         status = A2D_NS_MIN_BITPOOL;
     }
-
+    // test by nishi éÊÇËä∏Ç¶Ç∏     status = A2D_SUCCESS Ç≈èIÇÌÇÁÇπÇ‹Ç∑ÅB
+    //if(A2D_MEDIA_CT_SBC==0xff){
+    //	status = A2D_SUCCESS;
+    //}
     return status;
 }
 
@@ -541,8 +548,10 @@ UINT8 bta_av_sbc_cfg_in_cap(UINT8 *p_cfg, tA2D_SBC_CIE *p_cap)
     UINT8           status = 0;
     tA2D_SBC_CIE    cfg_cie;
 
+	// add by nishi
+    APPL_TRACE_WARNING("bta_av_sbc.c::bta_av_sbc_cfg_in_cap() : #1 called!!");
     /* parse configuration */
-    if ((status = A2D_ParsSbcInfo(&cfg_cie, p_cfg, FALSE)) != 0) {
+    if ((status = A2D_ParsSbcInfo(&cfg_cie, p_cfg, FALSE,"bta_av_sbc_cfg_in_cap():#1")) != 0) {
         return status;
     }
 

@@ -531,6 +531,10 @@ void avdt_scb_event(tAVDT_SCB *p_scb, UINT8 event, tAVDT_SCB_EVT *p_data)
     UINT8               action;
     int                 i;
 
+
+    // test by nishi
+    //APPL_TRACE_WARNING("avdt_scb.c::avdt_scb_event():#1 SCB hdl=%d event=%d/%s", avdt_scb_to_hdl(p_scb), event,avdt_scb_evt_str[event]);
+
 #if AVDT_DEBUG == TRUE
     AVDT_TRACE_EVENT("SCB hdl=%d event=%d/%s state=%s\n", avdt_scb_to_hdl(p_scb), event, avdt_scb_evt_str[event], avdt_scb_st_str[p_scb->state]);
 #endif
@@ -568,7 +572,12 @@ void avdt_scb_event(tAVDT_SCB *p_scb, UINT8 event, tAVDT_SCB_EVT *p_data)
 *******************************************************************************/
 void avdt_scb_init(void)
 {
-    memset(&avdt_cb.scb[0], 0, sizeof(tAVDT_SCB) * AVDT_NUM_SEPS);
+    // test by nishi
+	#if AVDT_DEBUG == TRUE
+	AVDT_TRACE_EVENT("%s(): #1",__func__);
+	#endif
+
+	memset(&avdt_cb.scb[0], 0, sizeof(tAVDT_SCB) * AVDT_NUM_SEPS);
     avdt_cb.p_scb_act = (tAVDT_SCB_ACTION *) avdt_scb_action;
 }
 
@@ -583,10 +592,18 @@ void avdt_scb_init(void)
 ** Returns          pointer to the scb, or NULL if none could be allocated.
 **
 *******************************************************************************/
-tAVDT_SCB *avdt_scb_alloc(tAVDT_CS *p_cs)
+//tAVDT_SCB *avdt_scb_alloc(tAVDT_CS *p_cs)
+// DEBUG by nishi
+tAVDT_SCB *avdt_scb_alloc(tAVDT_CS *p_cs,char *caller)
 {
     tAVDT_SCB   *p_scb = &avdt_cb.scb[0];
     int         i;
+
+    // test by nishi
+	#if AVDT_DEBUG == TRUE
+	AVDT_TRACE_EVENT("%s(): #1 caller=%s",__func__, caller);
+	#endif
+
 
     /* find available scb */
     for (i = 0; i < AVDT_NUM_SEPS; i++, p_scb++) {

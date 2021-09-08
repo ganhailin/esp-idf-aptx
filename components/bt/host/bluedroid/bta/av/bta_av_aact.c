@@ -27,7 +27,7 @@
 #include "common/bt_target.h"
 #if defined(BTA_AV_INCLUDED) && (BTA_AV_INCLUDED == TRUE)
 
-#include <assert.h>
+// #include <assert.h>
 #include "common/bt_trace.h"
 #include <string.h>
 
@@ -42,6 +42,17 @@
 #include "bta/bta_ar_api.h"
 #endif
 #include "bta/bta_api.h"
+
+// add by nishi  for tAVDT_SCB access & avdt_scb_by_hdl()
+#include "stack/bt_types.h"
+#include "stack/avdtc_api.h"
+#include "avdt_int.h"
+#include "stack/btm_api.h"
+//#include "stack/btu.h"
+#include "stack/a2d_sbc.h"
+extern const tA2D_SBC_CIE bta_av_co_sbc_sink_caps;
+// end add by nishi
+
 
 /*****************************************************************************
 **  Constants
@@ -127,6 +138,37 @@ const tBTA_AV_SACT bta_av_a2d_action[] = {
     bta_av_open_fail_sdp,   /* BTA_AV_OPEN_FAIL_SDP */
     NULL
 };
+
+// DEBUG by nishi
+#ifdef DEBUG_NISHI_AACT
+/* these tables translate AVDT events to SSM events */
+static const char *bta_av_stream_evt_ok_str[] = {
+    "BTA_AV_STR_DISC_OK_EVT",         /* AVDT_DISCOVER_CFM_EVT */
+    "BTA_AV_STR_GETCAP_OK_EVT",       /* AVDT_GETCAP_CFM_EVT */
+    "BTA_AV_STR_OPEN_OK_EVT",         /* AVDT_OPEN_CFM_EVT */
+    "BTA_AV_STR_OPEN_OK_EVT",         /* AVDT_OPEN_IND_EVT */
+    "BTA_AV_STR_CONFIG_IND_EVT",      /* AVDT_CONFIG_IND_EVT */
+    "BTA_AV_STR_START_OK_EVT",        /* AVDT_START_CFM_EVT */
+    "BTA_AV_STR_START_OK_EVT",        /* AVDT_START_IND_EVT */
+    "BTA_AV_STR_SUSPEND_CFM_EVT",     /* AVDT_SUSPEND_CFM_EVT */
+    "BTA_AV_STR_SUSPEND_CFM_EVT",     /* AVDT_SUSPEND_IND_EVT */
+    "BTA_AV_STR_CLOSE_EVT",           /* AVDT_CLOSE_CFM_EVT */
+    "BTA_AV_STR_CLOSE_EVT",           /* AVDT_CLOSE_IND_EVT */
+    "BTA_AV_STR_RECONFIG_CFM_EVT",    /* AVDT_RECONFIG_CFM_EVT */
+    "0",                              /* AVDT_RECONFIG_IND_EVT */
+    "BTA_AV_STR_SECURITY_CFM_EVT",    /* AVDT_SECURITY_CFM_EVT */
+    "BTA_AV_STR_SECURITY_IND_EVT",    /* AVDT_SECURITY_IND_EVT */
+    "BTA_AV_STR_WRITE_CFM_EVT",       /* AVDT_WRITE_CFM_EVT */
+    "BTA_AV_AVDT_CONNECT_EVT",        /* AVDT_CONNECT_IND_EVT */
+    "BTA_AV_AVDT_DISCONNECT_EVT",     /* AVDT_DISCONNECT_IND_EVT */
+#if (AVDT_REPORTING == TRUE)
+    "BTA_AV_AVDT_RPT_CONN_EVT",       /* AVDT_REPORT_CONN_EVT */
+    "BTA_AV_AVDT_RPT_CONN_EVT",       /* AVDT_REPORT_DISCONN_EVT */
+#endif
+    "BTA_AV_AVDT_DELAY_RPT_EVT",      /* AVDT_DELAY_REPORT_EVT */
+    "0"                               /* AVDT_DELAY_REPORT_CFM_EVT */
+};
+#endif
 
 /* these tables translate AVDT events to SSM events */
 static const UINT16 bta_av_stream_evt_ok[] = {
@@ -412,6 +454,13 @@ static void bta_av_proc_stream_evt(UINT8 handle, BD_ADDR bd_addr, UINT8 event, t
     UINT16              sec_len = 0;
     tBTA_AV_SCB         *p_scb = bta_av_cb.p_scb[index];
     int                 xx;
+
+    // DEBUG by nishi
+	#ifdef DEBUG_NISHI_AACT
+    APPL_TRACE_DEBUG("%s():#1 handle=%x, event=%x:%s",__func__,handle,event,bta_av_stream_evt_ok_str[event]);
+	#else
+    APPL_TRACE_DEBUG("%s():#1 handle=%x, event=%x",__func__,handle,event);
+	#endif
 
     if (p_data) {
         if (event == AVDT_SECURITY_IND_EVT) {
@@ -1113,6 +1162,14 @@ void bta_av_config_ind (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
     p_scb->coll_mask = 0;
     bta_sys_stop_timer(&bta_av_cb.acp_sig_tmr);
 
+    // add by nishi
+    APPL_TRACE_DEBUG("bta_av_config_ind: #1 p_evt_cfg->num_codec=%x",p_evt_cfg->num_codec);
+    APPL_TRACE_DEBUG("bta_av_config_ind: #2 p_evt_cfg->codec_info[0]-[9]=%x,%x,%x,%x,%x,%x,%x,%x,%x,%x",
+    		p_evt_cfg->codec_info[0],p_evt_cfg->codec_info[1],p_evt_cfg->codec_info[2],
+			p_evt_cfg->codec_info[3],p_evt_cfg->codec_info[4],p_evt_cfg->codec_info[5],
+			p_evt_cfg->codec_info[6],p_evt_cfg->codec_info[7],p_evt_cfg->codec_info[8],
+			p_evt_cfg->codec_info[9]);
+
     /* if no codec parameters in configuration, fail */
     if ((p_evt_cfg->num_codec == 0) ||
             /* or the peer requests for a service we do not support */
@@ -1283,7 +1340,9 @@ void bta_av_setconfig_rsp (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
         }
 
 
-        if (p_scb->codec_type == BTA_AV_CODEC_SBC || num > 1) {
+        //if (p_scb->codec_type == BTA_AV_CODEC_SBC || num > 1) {
+        // changed by nishi for APTX support 2019.1.23
+        if (p_scb->codec_type == BTA_AV_CODEC_SBC || p_scb->codec_type == BTA_AV_CODEC_VEND || num > 1) {
             /* if SBC is used by the SNK as INT, discover req is not sent in bta_av_config_ind.
                        * call disc_res now */
             /* this is called in A2DP SRC path only, In case of SINK we don't need it  */
@@ -1818,6 +1877,7 @@ void bta_av_getcap_results (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
     UINT8       media_type;
     tAVDT_SEP_INFO  *p_info = &p_scb->sep_info[p_scb->sep_info_idx];
     UINT16 uuid_int; /* UUID for which connection was initiatied */
+    tAVDT_SCB   *p_scb0;
 
     memcpy(&cfg, &p_scb->cfg, sizeof(tAVDT_CFG));
     cfg.num_codec = 1;
@@ -1826,11 +1886,29 @@ void bta_av_getcap_results (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
     memcpy(cfg.protect_info, p_scb->p_cap->protect_info, AVDT_PROTECT_SIZE);
     media_type = p_scb->p_cap->codec_info[BTA_AV_MEDIA_TYPE_IDX] >> 4;
 
-    APPL_TRACE_DEBUG("num_codec %d", p_scb->p_cap->num_codec);
-    APPL_TRACE_DEBUG("media type x%x, x%x", media_type, p_scb->media_type);
+    APPL_TRACE_DEBUG("%s():#1  num_codec %d",__func__, p_scb->p_cap->num_codec);
+    APPL_TRACE_DEBUG("%s():#2 media type x%x, x%x",__func__, media_type, p_scb->media_type);
 #if AVDT_MULTIPLEXING == TRUE
-    APPL_TRACE_DEBUG("mux x%x, x%x", cfg.mux_mask, p_scb->p_cap->mux_mask);
+    APPL_TRACE_DEBUG("%s():#3 mux x%x, x%x",__func__, cfg.mux_mask, p_scb->p_cap->mux_mask);
 #endif
+    // DEBUG by nishi
+    APPL_TRACE_DEBUG("%s():#3.1 p_scb->seps[0].codec_type=x%x, p_scb->seps[0].av_handle=x%x",__func__,
+    		p_scb->seps[0].codec_type,
+			p_scb->seps[0].av_handle);
+
+    // APTX -> SBC �ցA�R�[�f�B�b�N����߂��B by nishi 2019.1.21
+    if(p_scb->seps[0].codec_type!=BTA_AV_CODEC_SBC){
+
+    	// avdt_cb.scb[n] �擾�ł��邩?
+    	p_scb0=avdt_scb_by_hdl(p_scb->seps[0].av_handle);
+
+    	p_scb->seps[0].codec_type=BTA_AV_CODEC_SBC;
+
+    	if(A2D_SUCCESS!=A2D_BldSbcInfo(AVDT_MEDIA_AUDIO, (tA2D_SBC_CIE *) &bta_av_co_sbc_sink_caps, p_scb0->cs.cfg.codec_info)){
+	        APPL_TRACE_DEBUG("%s():#3.2 A2D_BldSbcInfo() err",__func__);
+		}
+    }
+
 
     /* if codec present and we get a codec configuration */
     if ((p_scb->p_cap->num_codec != 0) &&
@@ -1840,14 +1918,14 @@ void bta_av_getcap_results (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
                                   &cfg.num_protect, cfg.protect_info) == 0)) {
 #if AVDT_MULTIPLEXING == TRUE
         cfg.mux_mask &= p_scb->p_cap->mux_mask;
-        APPL_TRACE_DEBUG("mux_mask used x%x", cfg.mux_mask);
+        APPL_TRACE_DEBUG("%s():#4 mux_mask used x%x",__func__, cfg.mux_mask);
 #endif
         /* save copy of codec type and configuration */
         p_scb->codec_type = cfg.codec_info[BTA_AV_CODEC_TYPE_IDX];
         memcpy(&p_scb->cfg, &cfg, sizeof(tAVDT_CFG));
 
         uuid_int = p_scb->uuid_int;
-        APPL_TRACE_DEBUG(" initiator UUID = 0x%x ", uuid_int);
+        APPL_TRACE_DEBUG("%s():#5 initiator UUID = 0x%x ",__func__, uuid_int);
         if (uuid_int == UUID_SERVCLASS_AUDIO_SOURCE) {
             bta_av_adjust_seps_idx(p_scb, bta_av_get_scb_handle(p_scb, AVDT_TSEP_SRC));
         } else if (uuid_int == UUID_SERVCLASS_AUDIO_SINK) {
@@ -1860,7 +1938,7 @@ void bta_av_getcap_results (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
 
         if ((uuid_int == UUID_SERVCLASS_AUDIO_SINK) &&
                 (p_scb->seps[p_scb->sep_idx].p_app_data_cback != NULL)) {
-            APPL_TRACE_DEBUG(" Configure Deoder for Sink Connection ");
+            APPL_TRACE_DEBUG("%s():#6 Configure Deoder for Sink Connection ",__func__);
             p_scb->seps[p_scb->sep_idx].p_app_data_cback(BTA_AV_MEDIA_SINK_CFG_EVT,
                     (tBTA_AV_MEDIA *)p_scb->cfg.codec_info);
         }
@@ -1878,6 +1956,8 @@ void bta_av_getcap_results (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
         p_scb->sep_info_idx++;
         bta_av_next_getcap(p_scb, p_data);
     }
+    // DEBUG by nishi
+    APPL_TRACE_DEBUG("%s():#99 return!!",__func__);
 
 }
 
@@ -2247,6 +2327,8 @@ void bta_av_start_ok (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
     UINT8           cur_role;
 
     APPL_TRACE_DEBUG("bta_av_start_ok wait:x%x, role:x%x", p_scb->wait, p_scb->role);
+    // DEBUG add by nishi 2019.1.30
+    APPL_TRACE_DEBUG("\tp_data->hdr.len=x%x, p_data->hdr.offset=x%x", p_data->hdr.len,p_data->hdr.offset);
 
     p_scb->started = TRUE;
     if (p_scb->sco_suspend) {
@@ -2364,6 +2446,8 @@ void bta_av_start_ok (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
 
         APPL_TRACE_DEBUG("bta_av_start_ok suspending: %d, role:x%x, init %d",
                          suspend, p_scb->role, initiator);
+        // DEBUG add by nishi 2019.1.30
+        APPL_TRACE_DEBUG("\tp_data->hdr.len=x%x, p_data->hdr.offset=x%x", p_data->hdr.len,p_data->hdr.offset);
 
         start.suspending = suspend;
         start.initiator = initiator;

@@ -317,7 +317,9 @@ void avdt_ad_tc_close_ind(tAVDT_TC_TBL *p_tbl, UINT16 reason)
     if (p_tbl->tcid == 0) {
         p_ccb = avdt_ccb_by_idx(p_tbl->ccb_idx);
         p_ccb->disc_rsn = (reason == AVDT_DISC_RSN_ABNORMAL) ? AVDT_DISC_RSN_ABNORMAL : AVDT_DISC_RSN_NORMAL;
-        avdt_ccb_event(p_ccb, AVDT_CCB_LL_CLOSE_EVT, NULL);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_LL_CLOSE_EVT, NULL);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_LL_CLOSE_EVT, NULL,"avdt_ad_tc_close_ind");
     }
     /* if media or other channel, notify scb that channel close */
     else {
@@ -365,7 +367,10 @@ void avdt_ad_tc_open_ind(tAVDT_TC_TBL *p_tbl)
         if (p_tbl->cfg_flags & AVDT_L2C_CFG_CONN_ACP) {
             evt.err_param = AVDT_ACP;
         }
-        avdt_ccb_event(p_ccb, AVDT_CCB_LL_OPEN_EVT, (tAVDT_CCB_EVT *)&evt);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_LL_OPEN_EVT, (tAVDT_CCB_EVT *)&evt);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_LL_OPEN_EVT, (tAVDT_CCB_EVT *)&evt,"avdt_ad_tc_open_ind");
+
     }
     /* if media or other channel, notify scb that channel open */
     else {
@@ -405,7 +410,9 @@ void avdt_ad_tc_cong_ind(tAVDT_TC_TBL *p_tbl, BOOLEAN is_congested)
     /* if signaling channel, notify ccb of congestion */
     if (p_tbl->tcid == 0) {
         p_ccb = avdt_ccb_by_idx(p_tbl->ccb_idx);
-        avdt_ccb_event(p_ccb, AVDT_CCB_LL_CONG_EVT, (tAVDT_CCB_EVT *) &is_congested);
+        //avdt_ccb_event(p_ccb, AVDT_CCB_LL_CONG_EVT, (tAVDT_CCB_EVT *) &is_congested);
+        // test by nishi
+        avdt_ccb_event(p_ccb, AVDT_CCB_LL_CONG_EVT, (tAVDT_CCB_EVT *) &is_congested,"avdt_ad_tc_cong_ind");
     }
     /* if media or other channel, notify scb that channel open */
     else {

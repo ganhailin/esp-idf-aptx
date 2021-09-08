@@ -270,6 +270,51 @@ const tAVDT_CCB_ST_TBL avdt_ccb_st_tbl[] = {
     avdt_ccb_st_closing
 };
 
+// test by nishi
+#if AVDT_DEBUG == TRUE
+const char *avdt_ccb_action_str[] = {
+    "avdt_ccb_chan_open",
+    "avdt_ccb_chan_close",
+    "avdt_ccb_chk_close",
+    "avdt_ccb_hdl_discover_cmd",
+    "avdt_ccb_hdl_discover_rsp",
+    "avdt_ccb_hdl_getcap_cmd",
+    "avdt_ccb_hdl_getcap_rsp",
+    "avdt_ccb_hdl_start_cmd",
+    "avdt_ccb_hdl_start_rsp",
+    "avdt_ccb_hdl_suspend_cmd",
+    "avdt_ccb_hdl_suspend_rsp",
+    "avdt_ccb_snd_discover_cmd",
+    "avdt_ccb_snd_discover_rsp",
+    "avdt_ccb_snd_getcap_cmd",
+    "avdt_ccb_snd_getcap_rsp",
+    "avdt_ccb_snd_start_cmd",
+    "avdt_ccb_snd_start_rsp",
+    "avdt_ccb_snd_suspend_cmd",
+    "avdt_ccb_snd_suspend_rsp",
+    "avdt_ccb_clear_cmds",
+    "avdt_ccb_cmd_fail",
+    "avdt_ccb_free_cmd",
+    "avdt_ccb_cong_state",
+    "avdt_ccb_ret_cmd",
+    "avdt_ccb_snd_cmd",
+    "avdt_ccb_snd_msg",
+    "avdt_ccb_set_reconn",
+    "avdt_ccb_clr_reconn",
+    "avdt_ccb_chk_reconn",
+    "avdt_ccb_chk_timer",
+    "avdt_ccb_set_conn",
+    "avdt_ccb_set_disconn",
+    "avdt_ccb_do_disconn",
+    "avdt_ccb_ll_closed",
+    "avdt_ccb_ll_opened",
+    "avdt_ccb_dealloc"
+};
+
+#endif
+
+
+
 /*******************************************************************************
 **
 ** Function         avdt_ccb_init
@@ -296,14 +341,19 @@ void avdt_ccb_init(void)
 ** Returns          Nothing.
 **
 *******************************************************************************/
-void avdt_ccb_event(tAVDT_CCB *p_ccb, UINT8 event, tAVDT_CCB_EVT *p_data)
+//void avdt_ccb_event(tAVDT_CCB *p_ccb, UINT8 event, tAVDT_CCB_EVT *p_data)
+// test by nishi
+void avdt_ccb_event(tAVDT_CCB *p_ccb, UINT8 event, tAVDT_CCB_EVT *p_data,char *caller)
 {
     tAVDT_CCB_ST_TBL    state_table;
     UINT8               action;
     int                 i;
 
+    // test by nishi
+    //APPL_TRACE_WARNING("avdt_ccb.c::avdt_ccb_event():#1 CCB ccb=%d event=%s state=%s\n", avdt_ccb_to_idx(p_ccb), avdt_ccb_evt_str[event], avdt_ccb_st_str[p_ccb->state]);
+
 #if AVDT_DEBUG == TRUE
-    AVDT_TRACE_EVENT("CCB ccb=%d event=%s state=%s\n", avdt_ccb_to_idx(p_ccb), avdt_ccb_evt_str[event], avdt_ccb_st_str[p_ccb->state]);
+    AVDT_TRACE_EVENT("CCB ccb=%d event=%s state=%s caller=%s\n", avdt_ccb_to_idx(p_ccb), avdt_ccb_evt_str[event], avdt_ccb_st_str[p_ccb->state],caller);
 #endif
 
     /* look up the state table for the current state */
@@ -317,6 +367,10 @@ void avdt_ccb_event(tAVDT_CCB *p_ccb, UINT8 event, tAVDT_CCB_EVT *p_data)
     /* execute action functions */
     for (i = 0; i < AVDT_CCB_ACTIONS; i++) {
         if ((action = state_table[event][i]) != AVDT_CCB_IGNORE) {
+            // test by nishi
+			#if AVDT_DEBUG == TRUE
+        	AVDT_TRACE_EVENT("%s(): #2 action=%x:%s",__func__, action,avdt_ccb_action_str[action]);
+			#endif
             (*avdt_cb.p_ccb_act[action])(p_ccb, p_data);
         } else {
             break;
@@ -367,10 +421,17 @@ tAVDT_CCB *avdt_ccb_by_bd(BD_ADDR bd_addr)
 ** Returns          pointer to the ccb, or NULL if none could be allocated.
 **
 *******************************************************************************/
-tAVDT_CCB *avdt_ccb_alloc(BD_ADDR bd_addr)
+//tAVDT_CCB *avdt_ccb_alloc(BD_ADDR bd_addr)
+// DEBUG by nishi
+tAVDT_CCB *avdt_ccb_alloc(BD_ADDR bd_addr,char *caller)
 {
     tAVDT_CCB   *p_ccb = &avdt_cb.ccb[0];
     int         i;
+
+	#if AVDT_DEBUG == TRUE
+    AVDT_TRACE_EVENT("%s(): #1 caller=%s",__func__, caller);
+	#endif
+
 
     for (i = 0; i < AVDT_NUM_LINKS; i++, p_ccb++) {
         if (!p_ccb->allocated) {

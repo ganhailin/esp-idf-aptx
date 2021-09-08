@@ -33,6 +33,9 @@
 
 #if (AVRC_INCLUDED == TRUE)
 
+// debug by nishi
+//#define AVDT_DEBUG  TRUE
+
 #ifndef AVDT_DEBUG
 #define AVDT_DEBUG  FALSE
 #endif
@@ -559,9 +562,13 @@ typedef struct {
 
 /* CCB function declarations */
 extern void avdt_ccb_init(void);
-extern void avdt_ccb_event(tAVDT_CCB *p_ccb, UINT8 event, tAVDT_CCB_EVT *p_data);
+//extern void avdt_ccb_event(tAVDT_CCB *p_ccb, UINT8 event, tAVDT_CCB_EVT *p_data);
+// test by nishi
+extern void avdt_ccb_event(tAVDT_CCB *p_ccb, UINT8 event, tAVDT_CCB_EVT *p_data,char *caller);
 extern tAVDT_CCB *avdt_ccb_by_bd(BD_ADDR bd_addr);
-extern tAVDT_CCB *avdt_ccb_alloc(BD_ADDR bd_addr);
+//extern tAVDT_CCB *avdt_ccb_alloc(BD_ADDR bd_addr);
+// DEBUG by nishi
+extern tAVDT_CCB *avdt_ccb_alloc(BD_ADDR bd_addr,char *caller);
 extern void avdt_ccb_dealloc(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data);
 extern UINT8 avdt_ccb_to_idx(tAVDT_CCB *p_ccb);
 extern tAVDT_CCB *avdt_ccb_by_idx(UINT8 idx);
@@ -606,7 +613,9 @@ extern void avdt_ccb_ll_opened(tAVDT_CCB *p_ccb, tAVDT_CCB_EVT *p_data);
 /* SCB function prototypes */
 extern void avdt_scb_event(tAVDT_SCB *p_scb, UINT8 event, tAVDT_SCB_EVT *p_data);
 extern void avdt_scb_init(void);
-extern tAVDT_SCB *avdt_scb_alloc(tAVDT_CS *p_cs);
+//extern tAVDT_SCB *avdt_scb_alloc(tAVDT_CS *p_cs);
+// DEBUG by nishi
+extern tAVDT_SCB *avdt_scb_alloc(tAVDT_CS *p_cs,char *caller);
 extern void avdt_scb_dealloc(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data);
 extern UINT8 avdt_scb_to_hdl(tAVDT_SCB *p_scb);
 extern tAVDT_SCB *avdt_scb_by_hdl(UINT8 hdl);

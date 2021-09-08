@@ -701,7 +701,7 @@ static void bta_av_api_register(tBTA_AV_DATA *p_data)
                 }
             }
             bta_av_cb.reg_audio |= BTA_AV_HNDL_TO_MSK(p_scb->hdi);
-            APPL_TRACE_DEBUG("reg_audio: 0x%x\n", bta_av_cb.reg_audio);
+            APPL_TRACE_DEBUG("%s(): #6 reg_audio: 0x%x",__func__, bta_av_cb.reg_audio);
         } else {
             bta_av_cb.reg_video = BTA_AV_HNDL_TO_MSK(p_scb->hdi);
             bta_av_cb.sdp_vdp_handle = SDP_CreateRecord();
