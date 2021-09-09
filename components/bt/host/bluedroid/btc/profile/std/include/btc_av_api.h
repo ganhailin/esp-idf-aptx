@@ -31,6 +31,8 @@
 #include "stack/a2d_sbc.h"
 // add by nishi
 #include "stack/a2dp_vendor_aptx.h"
+//add by hailin
+#include "stack/a2dp_vendor_ldac.h"
 
 #if (BTC_AV_INCLUDED == TRUE)
 /*****************************************************************************

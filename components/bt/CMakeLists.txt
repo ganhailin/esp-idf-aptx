@@ -63,6 +63,8 @@ if(CONFIG_BT_ENABLED)
             host/bluedroid/hci/include
             host/bluedroid/external/sbc/decoder/include
             host/bluedroid/external/sbc/encoder/include
+            host/bluedroid/external/aptx/include
+            host/bluedroid/external/ldac/include
             host/bluedroid/external/sbc/plc/include
             host/bluedroid/btc/profile/esp/include
             host/bluedroid/btc/profile/std/a2dp/include
@@ -211,7 +213,14 @@ if(CONFIG_BT_ENABLED)
                    "host/bluedroid/external/sbc/decoder/srce/synthesis-8-generated.c"
                    "host/bluedroid/external/sbc/decoder/srce/synthesis-dct8.c"
                    "host/bluedroid/external/sbc/decoder/srce/synthesis-sbc.c"
-                   "host/bluedroid/external/sbc/decoder/srce/openaptx.c"
+                   "host/bluedroid/external/aptx/openaptx.c"
+                   "host/bluedroid/external/ldac/bit_allocation.c"
+                   "host/bluedroid/external/ldac/bit_reader.c"
+                   "host/bluedroid/external/ldac/huffCodes.c"
+                   "host/bluedroid/external/ldac/imdct.c"
+                   "host/bluedroid/external/ldac/libldacdec.c"
+                   "host/bluedroid/external/ldac/spectrum.c"
+                   "host/bluedroid/external/ldac/utility.c"
                    "host/bluedroid/external/sbc/encoder/srce/sbc_analysis.c"
                    "host/bluedroid/external/sbc/encoder/srce/sbc_dct.c"
                    "host/bluedroid/external/sbc/encoder/srce/sbc_dct_coeffs.c"
@@ -232,6 +241,7 @@ if(CONFIG_BT_ENABLED)
                    "host/bluedroid/stack/a2dp/a2d_api.c"
                    "host/bluedroid/stack/a2dp/a2d_sbc.c"
                    "host/bluedroid/stack/a2dp/a2dp_vendor_aptx.c"
+                   "host/bluedroid/stack/a2dp/a2dp_vendor_ldac.c"
                    "host/bluedroid/stack/avct/avct_api.c"
                    "host/bluedroid/stack/avct/avct_ccb.c"
                    "host/bluedroid/stack/avct/avct_l2c.c"

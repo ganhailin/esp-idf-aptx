@@ -1286,7 +1286,12 @@ static void bte_av_media_callback(tBTA_AV_EVT event, tBTA_AV_MEDIA *p_data)
     btc_sm_state_t state;
     UINT8 que_len;
     tA2D_STATUS a2d_status;
-    tA2D_SBC_CIE sbc_cie;
+    union {
+        tA2D_SBC_CIE sbc_cie;
+        tA2DP_APTX_CIE aptx_cie;
+        tA2DP_LDAC_CIE ldac_cie;
+    }ices;
+
 
     UINT8 *c_info=(UINT8 *)p_data;
 
@@ -1321,7 +1326,7 @@ static void bte_av_media_callback(tBTA_AV_EVT event, tBTA_AV_MEDIA *p_data)
         // SBC
         if(c_info[2]==BTA_AV_CODEC_SBC){
             /* currently only supportes SBC */
-            a2d_status = A2D_ParsSbcInfo(&sbc_cie, (UINT8 *)p_data, FALSE,"bte_av_media_callback() 1");
+            a2d_status = A2D_ParsSbcInfo(&ices.sbc_cie, (UINT8 *)p_data, FALSE,"bte_av_media_callback() 1");
             if (a2d_status == A2D_SUCCESS) {
             	// add by nishi
                 APPL_TRACE_WARNING("%s(): #4 Packets in SBC",__func__);
@@ -1340,25 +1345,52 @@ static void bte_av_media_callback(tBTA_AV_EVT event, tBTA_AV_MEDIA *p_data)
         }
         // APTX
         else if(c_info[2]==BTA_AV_CODEC_VEND){
-        	a2d_status = A2DP_ParseInfoAptx((tA2DP_APTX_CIE*)&sbc_cie, (uint8_t *)p_data, FALSE,"bte_av_media_callback() 2");
-        	if(a2d_status == A2D_SUCCESS){
-        		// add by nishi
-        		//ESP_LOGI(BTC_AV_TAG, "bte_av_media_callback() : #4 Packets in APTX");
-        		APPL_TRACE_WARNING("%s(): #5 Packets in APTX", __func__);
-        		// next lines dummy
-        		btc_msg_t msg;
-        		btc_av_args_t arg;
+            uint32_t vendorid=c_info[3]|(((uint32_t)c_info[4])<<8)|(((uint32_t)c_info[5])<<16)|(((uint32_t)c_info[6])<<24);
+        	if(vendorid == A2DP_APTX_VENDOR_ID) {
+                a2d_status = A2DP_ParseInfoAptx((tA2DP_APTX_CIE *) &ices.sbc_cie, (uint8_t *) p_data, FALSE,
+                                                "bte_av_media_callback() 2");
+                if (a2d_status == A2D_SUCCESS) {
+                    // add by nishi
+                    //ESP_LOGI(BTC_AV_TAG, "bte_av_media_callback() : #4 Packets in APTX");
+                    APPL_TRACE_WARNING("%s(): #5 Packets in APTX", __func__);
+                    // next lines dummy
+                    btc_msg_t msg;
+                    btc_av_args_t arg;
 
-        		msg.sig = BTC_SIG_API_CB;
-        		msg.pid = BTC_PID_A2DP;
-        		msg.act = BTC_AV_SINK_CONFIG_REQ_EVT;
+                    msg.sig = BTC_SIG_API_CB;
+                    msg.pid = BTC_PID_A2DP;
+                    msg.act = BTC_AV_SINK_CONFIG_REQ_EVT;
 
-        		memset(&arg, 0, sizeof(btc_av_args_t));
-        		//arg.mcc.type = ESP_A2D_MCT_SBC;
-        		arg.mcc.type = ESP_A2D_MCT_NON_A2DP;
-        		memcpy(arg.mcc.cie.aptx, (uint8_t *)p_data + 3, ESP_A2D_CIE_LEN_APTX);
-        		btc_transfer_context(&msg, &arg, sizeof(btc_av_args_t), NULL);
-        	}
+                    memset(&arg, 0, sizeof(btc_av_args_t));
+                    //arg.mcc.type = ESP_A2D_MCT_SBC;
+                    arg.mcc.type = ESP_A2D_MCT_NON_A2DP;
+                    memcpy(arg.mcc.cie.aptx, (uint8_t *) p_data + 3, ESP_A2D_CIE_LEN_APTX);
+                    btc_transfer_context(&msg, &arg, sizeof(btc_av_args_t), NULL);
+                }
+            }
+        	else if (vendorid == A2DP_LDAC_VENDOR_ID){
+                a2d_status = A2DP_ParseInfoLDAC((tA2DP_LDAC_CIE *) &ices.sbc_cie, (uint8_t *) p_data, FALSE,
+                                                "bte_av_media_callback() 2");
+                if (a2d_status == A2D_SUCCESS) {
+                    // add by nishi
+                    //ESP_LOGI(BTC_AV_TAG, "bte_av_media_callback() : #4 Packets in APTX");
+                    APPL_TRACE_WARNING("%s(): #5 Packets in LDAC", __func__);
+                    // next lines dummy
+                    btc_msg_t msg;
+                    btc_av_args_t arg;
+
+                    msg.sig = BTC_SIG_API_CB;
+                    msg.pid = BTC_PID_A2DP;
+                    msg.act = BTC_AV_SINK_CONFIG_REQ_EVT;
+
+                    memset(&arg, 0, sizeof(btc_av_args_t));
+                    //arg.mcc.type = ESP_A2D_MCT_SBC;
+                    arg.mcc.type = ESP_A2D_MCT_NON_A2DP;
+                    memcpy(arg.mcc.cie.aptx, (uint8_t *) p_data + 3, ESP_A2D_CIE_LEN_LDAC);
+                    btc_transfer_context(&msg, &arg, sizeof(btc_av_args_t), NULL);
+                }
+
+            }
         }
         if(a2d_status != A2D_SUCCESS){
     		BTC_TRACE_ERROR("%s(): ERROR unsupport codec id fail:%d\n",__func__, a2d_status);

@@ -39,7 +39,8 @@
 
 // add by nishi
 #include "stack/a2dp_vendor_aptx.h"
-
+// add by hailin
+#include "stack/a2dp_vendor_ldac.h"
 
 //add by nishi for a2dp_sink test
 //#define BTC_AV_INCLUDED 1
@@ -110,6 +111,14 @@ const tA2DP_APTX_CIE bta_av_co_aptx_caps = {
   BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 /* bits_per_sample ? */
 };
 
+/* LDAC SINK codec capabilities */
+const tA2DP_LDAC_CIE bta_av_co_ldac_caps = {
+        A2DP_LDAC_VENDOR_ID,          /* vendorId */
+        A2DP_LDAC_CODEC_ID_BLUETOOTH, /* Codec ID for aptX */
+        (A2DP_LDAC_SAMPLERATE_44100 | A2DP_LDAC_SAMPLERATE_48000 | A2DP_LDAC_SAMPLERATE_88200| A2DP_LDAC_SAMPLERATE_96000),   /* sampleRate */
+        A2DP_LDAC_CHANNELS_STEREO,    /* channelMode STEREO/DUAL/MONO */
+        BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 /* bits_per_sample ? */
+};
 
 #if !defined(BTC_AV_SBC_DEFAULT_SAMP_FREQ)
 #define BTC_AV_SBC_DEFAULT_SAMP_FREQ A2D_SBC_IE_SAMP_FREQ_44
@@ -284,7 +293,7 @@ BOOLEAN bta_av_co_audio_init(UINT8 *p_codec_type, UINT8 *p_codec_info, UINT8 *p_
         A2D_BldSbcInfo(AVDT_MEDIA_AUDIO, (tA2D_SBC_CIE *) &bta_av_co_sbc_caps, p_codec_info);
         return TRUE;
     } else if (tsep == AVDT_TSEP_SNK) {
-		#define NISHI_APTX_1
+		//#define NISHI_APTX_1
 		#ifdef NISHI_APTX_1
 		    // �����ŁAAPTX  �R�[�f�b�N�^�C�v��ݒ肵�Ă��܂��B by nishi 2019.1.15
     		*p_codec_type = BTA_AV_CODEC_VEND;
@@ -299,7 +308,24 @@ BOOLEAN bta_av_co_audio_init(UINT8 *p_codec_type, UINT8 *p_codec_info, UINT8 *p_
 
 
     		if(sts!=A2DP_SUCCESS) return FALSE;
-		#else
+        #endif
+        #define HAILIN_LDAC_1
+        #ifdef HAILIN_LDAC_1
+        // �����ŁAAPTX  �R�[�f�b�N�^�C�v��ݒ肵�Ă��܂��B by nishi 2019.1.15
+        *p_codec_type = BTA_AV_CODEC_VEND;
+
+        /* set up APTX SINK codec capabilities */
+        sts = A2DP_BuildInfoLDAC(AVDT_MEDIA_AUDIO,(tA2DP_LDAC_CIE*) &bta_av_co_ldac_caps, p_codec_info);
+
+        // Windows10 + �h���O���ł́Abta_av_co_audio_getconfig() �R�[���e�X�g�p�ɁA
+        // *p_codec_type = �ł���߂Ȓl���Z�b�g�B
+        //*p_codec_type = 0xfb;
+        //*(p_codec_info+2) = *p_codec_type;
+
+
+        if(sts!=A2DP_SUCCESS) return FALSE;
+        #endif
+        #if !(defined(NISHI_APTX_1 )||defined(HAILIN_LDAC_1))
     		// �����ŁASBC �R�[�f�b�N�^�C�v��ݒ肵�Ă��܂��B by nishi 2019.1.15
         *p_codec_type = BTA_AV_CODEC_SBC;
 
@@ -610,7 +636,7 @@ UINT8 bta_av_co_audio_getconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
 					 p_codec_info[7],p_codec_info[8]);
     }
 	else{
-		APPL_TRACE_DEBUG("bta_av_co_audio_getconfig() : #2 p_codec_info[%x:%x:%x], aptx vendr id=[%x:%x:%x:%x], aptx codec id bluetooth[%x:%x]",
+		APPL_TRACE_DEBUG("bta_av_co_audio_getconfig() : #2 p_codec_info[%x:%x:%x], vendr id=[%x:%x:%x:%x], codec id bluetooth[%x:%x]",
     				 p_codec_info[0],p_codec_info[1], p_codec_info[2],
 					 p_codec_info[3],p_codec_info[4], p_codec_info[5], p_codec_info[6],
 					 p_codec_info[7],p_codec_info[8]);
@@ -781,7 +807,7 @@ void bta_av_co_audio_setconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
 					 p_codec_info[7],p_codec_info[8]);
     }
 	else{
-		APPL_TRACE_DEBUG("%s(): #2 p_codec_info[%x:%x:%x], aptx vendr id=[%x:%x:%x:%x], aptx codec id bluetooth[%x:%x]",
+		APPL_TRACE_DEBUG("%s(): #2 p_codec_info[%x:%x:%x], vendr id=[%x:%x:%x:%x], codec id bluetooth[%x:%x]",
 					 __func__,
     				 p_codec_info[0],p_codec_info[1], p_codec_info[2],
 					 p_codec_info[3],p_codec_info[4], p_codec_info[5], p_codec_info[6],
@@ -1452,9 +1478,12 @@ static BOOLEAN bta_av_co_audio_sink_supports_config(UINT8 codec_type, const UINT
         break;
 
     // add by nishi for APTX 2019.1.21
+    // mod by hailin for ldac 2021.9.9
     case BTA_AV_CODEC_VEND:
         if (bta_av_aptx_cfg_in_cap((UINT8 *)p_codec_cfg, (tA2DP_APTX_CIE *)&bta_av_co_aptx_caps)) {
-            return FALSE;
+            if(bta_av_ldac_cfg_in_cap((UINT8 *)p_codec_cfg, (tA2DP_LDAC_CIE *)&bta_av_co_ldac_caps)){
+                return FALSE;
+            }
         }
         break;
 

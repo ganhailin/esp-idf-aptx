@@ -47,6 +47,9 @@
 // add by hishi for support APTX 2019.1.25
 #include "openaptx.h"
 
+//add by hailin for ldac
+#include "ldac_codec_api.h"
+
 // for watch dog diable by nishi
 #include "esp_int_wdt.h"
 #include "esp_task_wdt.h"
@@ -134,18 +137,26 @@ static void btc_a2dp_sink_rx_flush(void);
 //static int btc_a2dp_sink_get_track_frequency(UINT8 frequency);
 // changed by nishi 2019.1.22
 static int btc_a2dp_sink_get_track_frequency(UINT8 codec_id,UINT8 frequency);
+//add by hailin
+static int btc_a2dp_sink_get_track_frequency_ldac(UINT8 frequency);
 //static int btc_a2dp_sink_get_track_channel_count(UINT8 channeltype);
 // changed by nishi
 static int btc_a2dp_sink_get_track_channel_count(UINT8 codec_id,UINT8 channeltype);
+//add by hailin
+static int btc_a2dp_sink_get_track_channel_count_ldac(UINT8 channeltype);
 /* Handle incoming media packets A2DP SINK streaming*/
 static void btc_a2dp_sink_handle_inc_media(tBT_SBC_HDR *p_msg);
 // add b nishi */
 static void btc_a2dp_sink_handle_inc_media_Aptx(tBT_SBC_HDR *p_msg);
+//add by hailin
+static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg);
 static void btc_a2dp_sink_handle_decoder_reset(tBTC_MEDIA_SINK_CFG_UPDATE *p_msg);
 // add by nishi 2019.1.22 start
 static void btc_a2dp_sink_handle_decoder_reset_Sbc(tBTC_MEDIA_SINK_CFG_UPDATE *p_msg);
 static void btc_a2dp_sink_handle_decoder_reset_Aptx(tBTC_MEDIA_SINK_CFG_UPDATE *p_msg);
 // add by nishi 2019.1.22 end
+//add by hailin
+static void btc_a2dp_sink_handle_decoder_reset_ldac(tBTC_MEDIA_SINK_CFG_UPDATE *p_msg);
 
 static void btc_a2dp_sink_handle_clear_track(void);
 static BOOLEAN btc_a2dp_sink_clear_track(void);
@@ -161,7 +172,10 @@ static int btc_a2dp_sink_state = BTC_A2DP_SINK_STATE_OFF;
 static esp_a2d_sink_data_cb_t bt_aa_snk_data_cb = NULL;
 static QueueHandle_t btc_aa_snk_data_queue = NULL;
 static xTaskHandle btc_aa_snk_task_dr_hdl = NULL;
+
 static struct aptx_context *ctx=NULL;
+static ldacdec_t * ldacctx=NULL;
+
 #if A2D_DYNAMIC_MEMORY == FALSE
 static a2dp_sink_local_param_t a2dp_sink_local_param;
 #else
@@ -420,7 +434,8 @@ static void btc_a2dp_sink_data_ready_task(void *arg)
                                 btc_a2dp_sink_handle_inc_media(p_msg);
                                 break;
                             case BTA_AV_CODEC_VEND:
-                                btc_a2dp_sink_handle_inc_media_Aptx(p_msg);
+                                //btc_a2dp_sink_handle_inc_media_Aptx(p_msg);
+                                btc_a2dp_sink_handle_inc_media_ldac(p_msg);
                                 break;
                         }
                     }
@@ -554,7 +569,8 @@ static void btc_a2dp_sink_handle_decoder_reset(tBTC_MEDIA_SINK_CFG_UPDATE *p_msg
     	btc_a2dp_sink_handle_decoder_reset_Sbc(p_msg);
     	break;
     case BTA_AV_CODEC_VEND:
-    	btc_a2dp_sink_handle_decoder_reset_Aptx(p_msg);
+    	//btc_a2dp_sink_handle_decoder_reset_Aptx(p_msg);
+    	btc_a2dp_sink_handle_decoder_reset_ldac(p_msg);
     	break;
     }
 }
@@ -801,6 +817,109 @@ static void btc_a2dp_sink_handle_decoder_reset_Aptx(tBTC_MEDIA_SINK_CFG_UPDATE *
 
 /*******************************************************************************
  **
+ ** Function         btc_a2dp_sink_handle_decoder_reset for APTX
+ **
+ ** Description		add by nishi for APTX support 2019.1.22
+ **
+ ** Returns          void
+ **
+ *******************************************************************************/
+static void btc_a2dp_sink_handle_decoder_reset_ldac(tBTC_MEDIA_SINK_CFG_UPDATE *p_msg)
+{
+    tBTC_MEDIA_SINK_CFG_UPDATE *p_buf = p_msg;
+    tA2D_STATUS a2d_status;
+    tA2DP_LDAC_CIE ldac_cie;
+    OI_STATUS       status;
+    //UINT32          num_blocks = 16;
+    //UINT32          num_subbands = 8;
+
+    //int freq = 48000;
+
+    APPL_TRACE_EVENT("%s():#1", __FUNCTION__);
+    APPL_TRACE_EVENT("\tp_codec_info[%x:%x:%x:%x:%x:%x:%x:%x:%x:%x]",
+                     p_buf->codec_info[0],p_buf->codec_info[1], p_buf->codec_info[2], p_buf->codec_info[3],
+                     p_buf->codec_info[4], p_buf->codec_info[5], p_buf->codec_info[6],
+                     p_buf->codec_info[7], p_buf->codec_info[8], p_buf->codec_info[9]);
+
+
+    a2d_status = A2DP_ParseInfoLDAC(&ldac_cie,p_buf->codec_info, FALSE,"btc_a2dp_sink_handle_decoder_reset_LDAC");
+    if (a2d_status != A2D_SUCCESS) {
+        APPL_TRACE_ERROR("ERROR dump_codec_info A2DP_ParseInfoLDAC:%d\n", a2d_status);
+        return;
+    }
+
+    // set sampleRate
+    a2dp_sink_local_param.btc_aa_snk_cb.sample_rate = btc_a2dp_sink_get_track_frequency_ldac(ldac_cie.sampleRate);
+    // set channelMode  stero/mono
+    a2dp_sink_local_param.btc_aa_snk_cb.channel_count = btc_a2dp_sink_get_track_channel_count_ldac(ldac_cie.channelMode);
+    // set codec_type
+    a2dp_sink_local_param.btc_aa_snk_cb.codec_type = p_buf->codec_info[2];
+
+    a2dp_sink_local_param.btc_aa_snk_cb.rx_flush = FALSE;
+
+    APPL_TRACE_EVENT("Reset to sink role");
+    status = OI_CODEC_SBC_DecoderReset(&a2dp_sink_local_param.context, a2dp_sink_local_param.contextData,
+                                       sizeof(a2dp_sink_local_param.contextData), 2, 2, FALSE, FALSE);
+
+    if (!OI_SUCCESS(status)) {
+        APPL_TRACE_ERROR("OI_CODEC_SBC_DecoderReset failed with error code %d", status);
+    }
+
+    if(ldacctx!=NULL){
+        free(ldacctx);
+        ldacctx=NULL;
+    }
+    ldacctx=malloc(sizeof(ldacdec_t));
+    if(!ldacctx)
+    {
+        APPL_TRACE_ERROR("%s():#2 LDAC DecoderAlloc failed", __func__);
+        return;
+    }
+    ldacdecInit(ldacctx);
+
+    btc_a2dp_control_set_datachnl_stat(TRUE);
+
+    // sampleRate
+    switch (ldac_cie.sampleRate) {
+        case A2DP_LDAC_SAMPLERATE_44100:
+        case A2DP_LDAC_SAMPLERATE_48000:
+        case A2DP_LDAC_SAMPLERATE_88200:
+        case A2DP_LDAC_SAMPLERATE_96000:
+        case A2DP_LDAC_SAMPLERATE_176400:
+        case A2DP_LDAC_SAMPLERATE_192000:
+        APPL_TRACE_EVENT("\tsamp_freq:%d ()", ldac_cie.sampleRate);
+            break;
+        default:
+        APPL_TRACE_EVENT("\tUnknown Frequency ");
+            break;
+    }
+
+    // channelMode
+    switch (ldac_cie.channelMode) {
+        case A2DP_LDAC_CHANNELS_MONO:
+        APPL_TRACE_EVENT("\tch_mode:%d (Mono)", ldac_cie.channelMode);
+            break;
+        case A2DP_LDAC_CHANNELS_STEREO:
+        APPL_TRACE_EVENT("\tch_mode:%d (STEREO)", ldac_cie.channelMode);
+            break;
+        case A2DP_LDAC_CHANNELS_DUAL_CHANNEL:
+        APPL_TRACE_EVENT("\tch_mode:%d (dual_channel)", ldac_cie.channelMode);
+            break;
+        default:
+        APPL_TRACE_EVENT("\tUnknown Mode ");
+            break;
+    }
+
+
+    //APPL_TRACE_EVENT("\tBit pool Min:%d Max:%d\n", sbc_cie.min_bitpool, sbc_cie.max_bitpool);
+
+    //int frames_to_process = ((freq_multiple) / (num_blocks * num_subbands)) + 1;
+    //APPL_TRACE_EVENT(" Frames to be processed in 20 ms %d\n", frames_to_process);
+}
+
+
+/*******************************************************************************
+ **
  ** Function         btc_a2dp_sink_handle_inc_media
  **
  ** Description
@@ -960,6 +1079,113 @@ static void btc_a2dp_sink_handle_inc_media_Aptx(tBT_SBC_HDR *p_msg)
     //APPL_TRACE_EVENT("%s(): #5 len0=%d, len=%d, availPcmBytes=%d",__func__,len0,len,availPcmBytes);
 
 }
+/*******************************************************************************
+ **
+ ** Function         btc_a2dp_sink_handle_inc_media_LDAC
+ **
+ ** Description
+ **           add by hailin for support LDAC  2021.9.9
+ **
+ ** Returns          void
+ **
+ *******************************************************************************/
+static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
+{
+    //p_msg->len--;
+    //p_msg->offset++;
+
+    int count;
+    UINT32 pcmBytes, availPcmBytes;
+    OI_INT16 *pcmDataPointer = a2dp_sink_local_param.pcmData; /*Will be overwritten on next packet receipt*/
+    OI_STATUS status;
+    int num_sbc_frames = (int)(*(UINT8 *)(p_msg+1) & 0x0f);
+
+    //UINT8 *sbc_start_frame = ((UINT8 *)(p_msg + 1) + p_msg->offset + 1);
+    UINT8 *sbc_start_frame = ((UINT8 *)(p_msg + 1) + p_msg->offset);  // tBT_SBC_HDR ���΂����ʒu + p_msg->offset
+
+    //UINT32 sbc_frame_len = p_msg->len - 1;
+    UINT32 sbc_frame_len = p_msg->len;
+
+    availPcmBytes = sizeof(a2dp_sink_local_param.pcmData);
+
+    size_t processed;
+    size_t offset;
+    size_t sample_size;
+
+    uint32_t len0,len;
+
+    //UINT8 *c_p;
+
+    // DEBUG by nishi
+//    APPL_TRACE_DEBUG("%s(): #1 start!",__func__);
+//    APPL_TRACE_DEBUG("\tp_msg->num_frames.=x%x, len=x%x, offset=x%x, layer_specific=x%x",
+//    		p_msg->num_frames_to_be_processed,p_msg->len,p_msg->offset,p_msg->layer_specific);
+//    APPL_TRACE_DEBUG("\tsbc_start_frame[0-5]=%x:%x:%x:%x:%x:%x",
+//    		sbc_start_frame[0],sbc_start_frame[1],sbc_start_frame[2],sbc_start_frame[3],sbc_start_frame[4],sbc_start_frame[5]);
+
+    /* XXX: Check if the below check is correct, we are checking for peer to be sink when we are sink */
+    if (btc_av_get_peer_sep() == AVDT_TSEP_SNK || (a2dp_sink_local_param.btc_aa_snk_cb.rx_flush)) {
+        APPL_TRACE_WARNING(" State Changed happened in this tick");
+        return;
+    }
+
+    // ignore data if no one is listening
+    if (!btc_a2dp_control_get_datachnl_stat()) {
+        APPL_TRACE_WARNING(" ignore data if no one is listening");
+        return;
+    }
+
+    //c_p=(UINT8 *)p_msg;
+    //APPL_TRACE_EVENT("p_msg[0-7] [8] data=[0-3]=%x:%x:%x:%x:%x:%x:%x:%x %x %x:%x:%x:%x",
+    //		c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7],c_p[8],
+    //		sbc_start_frame[0],sbc_start_frame[1],sbc_start_frame[2],sbc_start_frame[3]);
+
+    APPL_TRACE_EVENT("Number of LDAC frames %d, p_msg->len %d ,p_msg->offset %d", num_sbc_frames, p_msg->len,p_msg->offset);
+
+
+
+
+
+    offset=0;
+    while(sbc_frame_len>0)
+    {
+        int bytesUsed = 0;
+        int ret = ldacDecode( ldacctx, (unsigned char *)(sbc_start_frame + offset), (int16_t *)pcmDataPointer, &bytesUsed );
+        if( ret < 0 ){
+            APPL_TRACE_ERROR("%s(): LDAC decode error!",__func__);
+            processed=sbc_frame_len;
+        }
+        else
+            processed=bytesUsed;
+        pcmBytes=ldacctx->frame.frameSamples*ldacdecGetChannelCount( ldacctx )*2;
+
+
+        offset += processed;
+        sbc_frame_len -= processed;
+
+        p_msg->offset = offset;				// BT_SBC_HDR->offset �I�t�Z�b�g�̍X�V
+        p_msg->len = sbc_frame_len;			// BT_SBC_HDR->len �f�[�^���̍X�V
+
+        // ��x������ break�����܂���B
+        //break;
+
+        availPcmBytes -= pcmBytes;			// �c��o�̓o�b�t�@�T�C�Y�@�̍X�V
+        pcmDataPointer += pcmBytes / 2;		// �o�̓o�b�t�@�|�C���^�̍X�V
+
+        if(pcmBytes == 0)
+            break;
+    }
+
+    //btc_a2d_data_cb_to_app((uint8_t *)btc_sbc_pcm_data, (BTC_SBC_DEC_PCM_DATA_LEN * sizeof(OI_INT16) - availPcmBytes));
+    //len0=BTC_SBC_DEC_PCM_DATA_LEN * sizeof(OI_INT16);
+    len=sizeof(a2dp_sink_local_param.pcmData) - availPcmBytes;
+    //len=pcmDataPointer-btc_sbc_pcm_data;
+    btc_a2d_data_cb_to_app((uint8_t *)a2dp_sink_local_param.pcmData, len);
+
+    // DEBUG by nishi
+    //APPL_TRACE_EVENT("%s(): #5 len0=%d, len=%d, availPcmBytes=%d",__func__,len0,len,availPcmBytes);
+
+}
 
 /*******************************************************************************
  **
@@ -1030,6 +1256,33 @@ static int btc_a2dp_sink_get_track_frequency(UINT8 codec_id,UINT8 frequency)
     }
     return freq;
 }
+static int btc_a2dp_sink_get_track_frequency_ldac(UINT8 frequency)
+{
+    int freq = 48000;
+    switch (frequency) {
+        case A2DP_LDAC_SAMPLERATE_44100:
+            freq = 44100;
+            break;
+        case A2DP_LDAC_SAMPLERATE_48000:
+            freq = 48000;
+            break;
+        case A2DP_LDAC_SAMPLERATE_88200:
+            freq = 88200;
+            break;
+        case A2DP_LDAC_SAMPLERATE_96000:
+            freq = 9600;
+            break;
+        case A2DP_LDAC_SAMPLERATE_176400:
+            freq = 176400;
+            break;
+        case A2DP_LDAC_SAMPLERATE_192000:
+            freq = 192000;
+            break;
+        default:
+            break;
+    }
+    return freq;
+}
 
 static int btc_a2dp_sink_get_track_channel_count(UINT8 codec_id,UINT8 channeltype)
 {
@@ -1059,6 +1312,23 @@ static int btc_a2dp_sink_get_track_channel_count(UINT8 codec_id,UINT8 channeltyp
         	break;
     	}
     	break;
+    }
+    return count;
+}
+static int btc_a2dp_sink_get_track_channel_count_ldac(UINT8 channeltype)
+{
+    int count = 1;
+
+    switch (channeltype) {
+        case A2DP_LDAC_CHANNELS_MONO:
+            count = 1;
+            break;
+        case A2DP_LDAC_CHANNELS_STEREO:
+        case A2DP_LDAC_CHANNELS_DUAL_CHANNEL:
+            count = 2;
+            break;
+        default:
+            break;
     }
     return count;
 }
