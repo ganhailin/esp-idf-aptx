@@ -449,44 +449,45 @@ static int decodeFrame( frame_t *this, BitReaderCxt *br )
 
     return 0;
 }
-
+#include <stdio.h>
+#define __DEBUG__FUCLINE__ //printf("%s:%d:%s\r\n",__FILE__,__LINE__,__func__);
 int ldacDecode( ldacdec_t *this, uint8_t *stream, int16_t *pcm, int *bytesUsed )
 {
     BitReaderCxt brObject;
     BitReaderCxt *br = &brObject;
     InitBitReaderCxt( br, stream );
-
+    __DEBUG__FUCLINE__
     frame_t *frame = &this->frame;
-   
+    __DEBUG__FUCLINE__
     int ret = decodeFrame( frame, br );
     if( ret < 0 )
         return -1;
-   
+    __DEBUG__FUCLINE__
     for( int block = 0; block<gaa_block_setting_ldac[frame->channelConfigId][1]; ++block )
     {
-        decodeBand( frame, br );
-        decodeGradient( frame, br );
-        calculateGradient( frame );
+        decodeBand( frame, br );__DEBUG__FUCLINE__
+        decodeGradient( frame, br );__DEBUG__FUCLINE__
+        calculateGradient( frame );__DEBUG__FUCLINE__
         
         for( int i=0; i<frame->channelCount; ++i )
         {
-            channel_t *channel = &frame->channels[i];
-            decodeScaleFactors( frame, br, i );
-            calculatePrecisionMask( channel ); 
-            calculatePrecisions( channel );
+            channel_t *channel = &frame->channels[i];__DEBUG__FUCLINE__
+            decodeScaleFactors( frame, br, i );__DEBUG__FUCLINE__
+            calculatePrecisionMask( channel ); __DEBUG__FUCLINE__
+            calculatePrecisions( channel );__DEBUG__FUCLINE__
 
-            decodeSpectrum( channel, br );
-            decodeSpectrumFine( channel, br );
-            dequantizeSpectra( channel );
-            scaleSpectrum( channel );
+            decodeSpectrum( channel, br );__DEBUG__FUCLINE__
+            decodeSpectrumFine( channel, br );__DEBUG__FUCLINE__
+            dequantizeSpectra( channel );__DEBUG__FUCLINE__
+            scaleSpectrum( channel );__DEBUG__FUCLINE__
 
-            RunImdct( &channel->mdct, channel->spectra, channel->pcm );
+            RunImdct( &channel->mdct, channel->spectra, channel->pcm );__DEBUG__FUCLINE__
         }
-        AlignPosition( br, 8 );
-        pcmFloatToShort( frame, pcm );
+        AlignPosition( br, 8 );__DEBUG__FUCLINE__
+        pcmFloatToShort( frame, pcm );__DEBUG__FUCLINE__
     }
 
-    AlignPosition( br, (frame->frameLength)*8 + 24 );
+    AlignPosition( br, (frame->frameLength)*8 + 24 );__DEBUG__FUCLINE__
 
     if( bytesUsed != NULL )
         *bytesUsed = br->Position / 8;

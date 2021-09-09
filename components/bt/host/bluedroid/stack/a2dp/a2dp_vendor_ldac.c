@@ -132,8 +132,8 @@ tA2D_STATUS A2DP_ParseInfoLDAC(tA2DP_LDAC_CIE* p_ie,const uint8_t* p_codec_info,
     return A2DP_WRONG_CODEC;
   }
     __DEBUG__LINE__OUTPUT
-  p_ie->channelMode = *p_codec_info++ ;
-  p_ie->sampleRate = *p_codec_info ;
+    p_ie->sampleRate = *p_codec_info++ ;
+  p_ie->channelMode = *p_codec_info ;
 
 
   if (is_capability) {
@@ -169,16 +169,16 @@ UINT8 bta_av_ldac_cfg_in_cap(UINT8 *p_cfg, tA2DP_LDAC_CIE *p_cap)
 {
     UINT8           status = 0;
     tA2DP_LDAC_CIE    cfg_cie;
-
+    __DEBUG__LINE__OUTPUT
 	// add by nishi
     APPL_TRACE_DEBUG("%s(): #1 called!!",__func__);
     /* parse configuration */
     if ((status = A2DP_ParseInfoLDAC(&cfg_cie, p_cfg, FALSE,"bta_av_ldac_cfg_in_cap()")) != 0) {
         return status;
     }
-
+    __DEBUG__LINE__OUTPUT
     /* verify that each parameter is in range */
-
+    __DEBUG__LINE__OUTPUT
     /* sampling frequency */
     if ((cfg_cie.sampleRate & p_cap->sampleRate) == 0) {
         status = A2D_NS_SAMP_FREQ;
@@ -186,7 +186,7 @@ UINT8 bta_av_ldac_cfg_in_cap(UINT8 *p_cfg, tA2DP_LDAC_CIE *p_cap)
     /* channel mode */
     else if ((cfg_cie.channelMode & p_cap->channelMode) == 0) {
         status = A2D_NS_CH_MODE;
-    }
+    }__DEBUG__LINE__OUTPUT
     /* block length */
     //else if ((cfg_cie.block_len & p_cap->block_len) == 0) {
     //    status = A2D_BAD_BLOCK_LEN;
@@ -207,7 +207,8 @@ UINT8 bta_av_ldac_cfg_in_cap(UINT8 *p_cfg, tA2DP_LDAC_CIE *p_cap)
     //else if (cfg_cie.min_bitpool < p_cap->min_bitpool) {
     //    status = A2D_NS_MIN_BITPOOL;
     //}
-
+    __DEBUG__LINE__OUTPUT
+    APPL_TRACE_WARNING("%s:%d,%s:ret:%d",__FILE__,__LINE__,__func__,status);
     return status;
 }
 

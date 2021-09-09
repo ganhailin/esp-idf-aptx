@@ -187,6 +187,13 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
             else if (oct0 & (0x01 << 4)) {
                 sample_rate = 48000;
             }
+            else if (oct0 & (0x01 << 3)) {
+                sample_rate = 88200;
+            }
+            else if (oct0 & (0x01 << 2)) {
+                sample_rate = 96000;
+            }
+
             //sample_rate = 48000;
             i2s_set_clk(0, sample_rate, 16, 2);
             //i2s_set_clk(0, sample_rate, 24, 2);

@@ -145,7 +145,7 @@ void bt_i2s_task_start_up(void)
         return;
     }
 
-    xTaskCreate(bt_i2s_task_handler, "BtI2ST", 1024, NULL, configMAX_PRIORITIES - 3, &s_bt_i2s_task_handle);
+    xTaskCreate(bt_i2s_task_handler, "BtI2ST", 8192, NULL, configMAX_PRIORITIES - 3, &s_bt_i2s_task_handle);
     return;
 }
 

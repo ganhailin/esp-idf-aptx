@@ -165,7 +165,7 @@ static BOOLEAN btc_a2dp_sink_clear_track(void);
 static void btc_a2dp_sink_data_ready_task(void *arg);
 static void btc_a2dp_sink_data_ready(void *arg);
 
-#define BTC_A2DP_SINK_TASK_STACK_SIZE         (2048 + BT_TASK_EXTRA_STACK_SIZE) // by menuconfig
+#define BTC_A2DP_SINK_TASK_STACK_SIZE         (8192 + BT_TASK_EXTRA_STACK_SIZE) // by menuconfig
 #define BTC_A2DP_SINK_TASK_PRIO               (configMAX_PRIORITIES - 3)
 
 static int btc_a2dp_sink_state = BTC_A2DP_SINK_STATE_OFF;
@@ -1098,13 +1098,19 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
     UINT32 pcmBytes, availPcmBytes;
     OI_INT16 *pcmDataPointer = a2dp_sink_local_param.pcmData; /*Will be overwritten on next packet receipt*/
     OI_STATUS status;
-    int num_sbc_frames = (int)(*(UINT8 *)(p_msg+1) & 0x0f);
 
-    //UINT8 *sbc_start_frame = ((UINT8 *)(p_msg + 1) + p_msg->offset + 1);
-    UINT8 *sbc_start_frame = ((UINT8 *)(p_msg + 1) + p_msg->offset);  // tBT_SBC_HDR ���΂����ʒu + p_msg->offset
 
-    //UINT32 sbc_frame_len = p_msg->len - 1;
-    UINT32 sbc_frame_len = p_msg->len;
+    UINT8 *sbc_start_frame = ((UINT8 *)(p_msg + 1) +p_msg->offset+ 12 );
+
+    UINT32 sbc_frame_len = p_msg->len-(12);
+    if(sbc_start_frame[1]==0xaa)
+    {
+        sbc_start_frame+=1;
+        sbc_frame_len-=1;
+        APPL_TRACE_DEBUG(" LDAC , fix frame flag");
+    }
+    APPL_TRACE_DEBUG(" LDAC , sbc_frame_len %d ,offset %d", sbc_frame_len,sbc_start_frame-(UINT8 *)p_msg);
+
 
     availPcmBytes = sizeof(a2dp_sink_local_param.pcmData);
 
@@ -1114,7 +1120,7 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
 
     uint32_t len0,len;
 
-    //UINT8 *c_p;
+    UINT8 *c_p;
 
     // DEBUG by nishi
 //    APPL_TRACE_DEBUG("%s(): #1 start!",__func__);
@@ -1135,12 +1141,16 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
         return;
     }
 
-    //c_p=(UINT8 *)p_msg;
-    //APPL_TRACE_EVENT("p_msg[0-7] [8] data=[0-3]=%x:%x:%x:%x:%x:%x:%x:%x %x %x:%x:%x:%x",
-    //		c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7],c_p[8],
-    //		sbc_start_frame[0],sbc_start_frame[1],sbc_start_frame[2],sbc_start_frame[3]);
-
-    APPL_TRACE_EVENT("Number of LDAC frames %d, p_msg->len %d ,p_msg->offset %d", num_sbc_frames, p_msg->len,p_msg->offset);
+//    c_p=(UINT8 *)p_msg;
+//    APPL_TRACE_EVENT("p_msg[0-7] [8] data=[0-3]=%x:%x:%x:%x:%x:%x:%x:%x %x %x:%x:%x:%x",
+//    		c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7],c_p[8],
+//    		sbc_start_frame[0],sbc_start_frame[1],sbc_start_frame[2],sbc_start_frame[3]);
+//    c_p+=8;
+//    APPL_TRACE_EVENT("p_msg[8-15]=%x:%x:%x:%x:%x:%x:%x:%x",c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7]);
+//    c_p+=8;
+//    APPL_TRACE_EVENT("p_msg[16-24]=%x:%x:%x:%x:%x:%x:%x:%x",c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7]);
+//
+//    APPL_TRACE_EVENT(" LDAC , p_msg->len %d ,p_msg->offset %d", p_msg->len,p_msg->offset);
 
 
 
@@ -1158,7 +1168,10 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
         else
             processed=bytesUsed;
         pcmBytes=ldacctx->frame.frameSamples*ldacdecGetChannelCount( ldacctx )*2;
-
+        APPL_TRACE_DEBUG(" LDAC , bytesUsed %d", bytesUsed);
+        APPL_TRACE_DEBUG(" LDAC , ldacdecGetChannelCount %d", ldacdecGetChannelCount( ldacctx ));
+        APPL_TRACE_DEBUG(" LDAC , ldacctx->frame.frameSamples %d", ldacctx->frame.frameSamples);
+        APPL_TRACE_DEBUG(" LDAC , availPcmBytes %d", availPcmBytes);
 
         offset += processed;
         sbc_frame_len -= processed;
@@ -1183,7 +1196,7 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
     btc_a2d_data_cb_to_app((uint8_t *)a2dp_sink_local_param.pcmData, len);
 
     // DEBUG by nishi
-    //APPL_TRACE_EVENT("%s(): #5 len0=%d, len=%d, availPcmBytes=%d",__func__,len0,len,availPcmBytes);
+    APPL_TRACE_EVENT("%s(): #5 , len=%d, availPcmBytes=%d",__func__,len,availPcmBytes);
 
 }
 
@@ -1270,7 +1283,7 @@ static int btc_a2dp_sink_get_track_frequency_ldac(UINT8 frequency)
             freq = 88200;
             break;
         case A2DP_LDAC_SAMPLERATE_96000:
-            freq = 9600;
+            freq = 96000;
             break;
         case A2DP_LDAC_SAMPLERATE_176400:
             freq = 176400;

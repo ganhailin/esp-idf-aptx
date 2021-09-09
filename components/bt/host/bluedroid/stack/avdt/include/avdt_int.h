@@ -34,7 +34,7 @@
 #if (AVRC_INCLUDED == TRUE)
 
 // debug by nishi
-//#define AVDT_DEBUG  TRUE
+#define AVDT_DEBUG  TRUE
 
 #ifndef AVDT_DEBUG
 #define AVDT_DEBUG  FALSE

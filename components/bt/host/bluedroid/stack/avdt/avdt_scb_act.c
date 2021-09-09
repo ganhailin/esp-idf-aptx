@@ -267,7 +267,7 @@ void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 
     // APTX codec ������  add by nishi 2019.2.5
     if(p_scb->cs.cfg.codec_info[AVDT_CODEC_TYPE_INDEX]==VDP_MEDIA_CT_VEND){
-        AVDT_TRACE_WARNING("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
+        AVDT_TRACE_WARNING("Fix this at avdt_scb_hdl_pkt_no_frag");
         //TODO:fix this
     	pad_len=0;
     	offset=0;
