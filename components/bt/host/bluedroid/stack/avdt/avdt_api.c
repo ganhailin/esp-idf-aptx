@@ -386,7 +386,7 @@ static UINT16 avdt_get_cap_req(BD_ADDR bd_addr, tAVDT_CCB_API_GETCAP *p_evt)
     UINT16          result = AVDT_SUCCESS;
 
     // test by nishi
-    APPL_TRACE_WARNING("avdt_api.c::avdt_get_cap_req():#1 seid: %d", p_evt->single.seid);
+    APPL_TRACE_WARNING("avdt_api.c::avdt_get_cap_req():#1 seid: %d  sig_id %d", p_evt->single.seid,p_evt->single.sig_id);
 
     /* verify SEID */
     if ((p_evt->single.seid < AVDT_SEID_MIN) || (p_evt->single.seid > AVDT_SEID_MAX)) {

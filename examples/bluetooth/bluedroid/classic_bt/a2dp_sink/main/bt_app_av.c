@@ -134,6 +134,7 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
         ESP_LOGI(BT_AV_TAG, "A2DP connection state: %s, [%02x:%02x:%02x:%02x:%02x:%02x]",
              s_a2d_conn_state_str[a2d->conn_stat.state], bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
+            //TODO:Try to not do anything
             esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
             bt_i2s_task_shut_down();
         } else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED){
@@ -355,8 +356,8 @@ static void volume_change_simulation(void *arg)
     testmsgs[0]=0;
     for (;;) {
         vTaskDelay(10000 / portTICK_RATE_MS);
-        vTaskGetRunTimeStats(testmsgs);
-        ESP_LOGI(BT_RC_TG_TAG,"%s",testmsgs);
+        //vTaskGetRunTimeStats(testmsgs);
+        //ESP_LOGI(BT_RC_TG_TAG,"%s",testmsgs);
         //uint8_t volume = (s_volume + 5) & 0x7f;
         //volume_set_by_local_host(volume);
     }

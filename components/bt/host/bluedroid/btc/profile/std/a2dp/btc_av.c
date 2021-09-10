@@ -170,6 +170,8 @@ static void btc_av_event_free_data(btc_sm_event_t event, void *p_data);
 *************************************************************************/
 
 extern tBTA_AV_CO_FUNCTS bta_av_a2d_cos;
+extern tBTA_AV_CO_FUNCTS bta_av_a2d_cos_aptx;
+extern tBTA_AV_CO_FUNCTS bta_av_a2d_cos_ldac;
 extern tBTA_AVRC_CO_FUNCTS bta_avrc_cos;
 /*****************************************************************************
 ** Local helper functions
@@ -1297,6 +1299,7 @@ static void bte_av_media_callback(tBTA_AV_EVT event, tBTA_AV_MEDIA *p_data)
 
 	// Debug by nishi
     BTC_TRACE_DEBUG("%s(): event=%s", __func__, get_bta_av_ev_tabl_nishi(event));
+    BTC_TRACE_DEBUG("%s(): state=%d", __func__, btc_sm_get_state(btc_av_cb.sm_handle));
 
 
     if (event == BTA_AV_MEDIA_DATA_EVT) { /* Switch to BTC_MEDIA context */
@@ -1433,6 +1436,8 @@ bt_status_t btc_av_execute_service(BOOLEAN b_enable, UINT8 tsep)
                         BTA_AV_FEAT_RCCT | BTA_AV_FEAT_ADV_CTRL,
                         bte_av_callback);
             BTA_AvRegister(BTA_AV_CHNL_AUDIO, BTC_AV_SERVICE_NAME, 0, bte_av_media_callback, &bta_av_a2d_cos, &bta_avrc_cos, tsep);
+            BTA_AvRegister(BTA_AV_CHNL_AUDIO, BTC_AV_SERVICE_NAME, 1, bte_av_media_callback, &bta_av_a2d_cos_aptx, &bta_avrc_cos, tsep);
+            BTA_AvRegister(BTA_AV_CHNL_AUDIO, BTC_AV_SERVICE_NAME, 2, bte_av_media_callback, &bta_av_a2d_cos_ldac, &bta_avrc_cos, tsep);
         } else {
             BTC_TRACE_WARNING("A2DP Enable without AVRC")
             BTA_AvEnable(BTA_SEC_AUTHENTICATE, BTA_AV_FEAT_NO_SCO_SSPD, bte_av_callback);

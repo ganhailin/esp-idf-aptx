@@ -293,46 +293,117 @@ BOOLEAN bta_av_co_audio_init(UINT8 *p_codec_type, UINT8 *p_codec_info, UINT8 *p_
         A2D_BldSbcInfo(AVDT_MEDIA_AUDIO, (tA2D_SBC_CIE *) &bta_av_co_sbc_caps, p_codec_info);
         return TRUE;
     } else if (tsep == AVDT_TSEP_SNK) {
-		//#define NISHI_APTX_1
-		#ifdef NISHI_APTX_1
-		    // �����ŁAAPTX  �R�[�f�b�N�^�C�v��ݒ肵�Ă��܂��B by nishi 2019.1.15
-    		*p_codec_type = BTA_AV_CODEC_VEND;
 
-    		/* set up APTX SINK codec capabilities */
-    		sts = A2DP_BuildInfoAptx(AVDT_MEDIA_AUDIO,(tA2DP_APTX_CIE*) &bta_av_co_aptx_caps, p_codec_info);
-
-    		// Windows10 + �h���O���ł́Abta_av_co_audio_getconfig() �R�[���e�X�g�p�ɁA
-    		// *p_codec_type = �ł���߂Ȓl���Z�b�g�B
-    		//*p_codec_type = 0xfb;
-    		//*(p_codec_info+2) = *p_codec_type;
-
-
-    		if(sts!=A2DP_SUCCESS) return FALSE;
-        #endif
-        #define HAILIN_LDAC_1
-        #ifdef HAILIN_LDAC_1
-        // �����ŁAAPTX  �R�[�f�b�N�^�C�v��ݒ肵�Ă��܂��B by nishi 2019.1.15
-        *p_codec_type = BTA_AV_CODEC_VEND;
-
-        /* set up APTX SINK codec capabilities */
-        sts = A2DP_BuildInfoLDAC(AVDT_MEDIA_AUDIO,(tA2DP_LDAC_CIE*) &bta_av_co_ldac_caps, p_codec_info);
-
-        // Windows10 + �h���O���ł́Abta_av_co_audio_getconfig() �R�[���e�X�g�p�ɁA
-        // *p_codec_type = �ł���߂Ȓl���Z�b�g�B
-        //*p_codec_type = 0xfb;
-        //*(p_codec_info+2) = *p_codec_type;
-
-
-        if(sts!=A2DP_SUCCESS) return FALSE;
-        #endif
-        #if !(defined(NISHI_APTX_1 )||defined(HAILIN_LDAC_1))
-    		// �����ŁASBC �R�[�f�b�N�^�C�v��ݒ肵�Ă��܂��B by nishi 2019.1.15
         *p_codec_type = BTA_AV_CODEC_SBC;
 
         /* This should not fail because we are using constants for parameters */
         A2D_BldSbcInfo(AVDT_MEDIA_AUDIO, (tA2D_SBC_CIE *) &bta_av_co_sbc_sink_caps, p_codec_info);
 
-        #endif
+        /* Codec is valid */
+        return TRUE;
+    } else {
+        APPL_TRACE_WARNING("%s() : #3 invalid SEP type %d", __func__,tsep);
+        return FALSE;
+    }
+}
+BOOLEAN bta_av_co_audio_init_aptx(UINT8 *p_codec_type, UINT8 *p_codec_info, UINT8 *p_num_protect,
+                             UINT8 *p_protect_info, UINT8 tsep)
+{
+    FUNC_TRACE();
+
+    // DEBUG by nishi
+    APPL_TRACE_DEBUG("%s()::bta_av_co.c : #1 *p_codec_type=%x",__func__,*p_codec_type);
+
+    // add by nishi
+    tA2DP_STATUS sts=0;
+
+
+    APPL_TRACE_DEBUG("%s() : #2 tsep=%d", __func__,tsep);
+
+    /* By default - no content protection info */
+    *p_num_protect = 0;
+    *p_protect_info = 0;
+
+    /* reset remote preference through setconfig */
+    bta_av_co_cb.codec_cfg_setconfig.id = BTC_AV_CODEC_NONE;
+
+    if (tsep == AVDT_TSEP_SRC) {
+#if defined(BTA_AV_CO_CP_SCMS_T) && (BTA_AV_CO_CP_SCMS_T == TRUE)
+        do {
+            UINT8 *p = p_protect_info;
+
+            /* Content protection info - support SCMS-T */
+            *p_num_protect = 1;
+            *p++ = BTA_AV_CP_LOSC;
+            UINT16_TO_STREAM(p, BTA_AV_CP_SCMS_T_ID);
+        } while (0);
+#endif
+        /* Set up for SBC codec  for SRC*/
+        *p_codec_type = BTA_AV_CODEC_SBC;
+
+        /* This should not fail because we are using constants for parameters */
+        A2D_BldSbcInfo(AVDT_MEDIA_AUDIO, (tA2D_SBC_CIE *) &bta_av_co_sbc_caps, p_codec_info);
+        return TRUE;
+    } else if (tsep == AVDT_TSEP_SNK) {
+
+    		*p_codec_type = BTA_AV_CODEC_VEND;
+
+    		/* set up APTX SINK codec capabilities */
+    		sts = A2DP_BuildInfoAptx(AVDT_MEDIA_AUDIO,(tA2DP_APTX_CIE*) &bta_av_co_aptx_caps, p_codec_info);
+
+    		if(sts!=A2DP_SUCCESS)
+    		    return FALSE;
+
+        /* Codec is valid */
+        return TRUE;
+    } else {
+        APPL_TRACE_WARNING("%s() : #3 invalid SEP type %d", __func__,tsep);
+        return FALSE;
+    }
+}
+BOOLEAN bta_av_co_audio_init_ldac(UINT8 *p_codec_type, UINT8 *p_codec_info, UINT8 *p_num_protect,
+                             UINT8 *p_protect_info, UINT8 tsep)
+{
+    FUNC_TRACE();
+
+    // DEBUG by nishi
+    APPL_TRACE_DEBUG("%s()::bta_av_co.c : #1 *p_codec_type=%x",__func__,*p_codec_type);
+
+    // add by nishi
+    tA2DP_STATUS sts=0;
+
+
+    APPL_TRACE_DEBUG("%s() : #2 tsep=%d", __func__,tsep);
+
+    /* By default - no content protection info */
+    *p_num_protect = 0;
+    *p_protect_info = 0;
+
+    /* reset remote preference through setconfig */
+    bta_av_co_cb.codec_cfg_setconfig.id = BTC_AV_CODEC_NONE;
+
+    if (tsep == AVDT_TSEP_SRC) {
+#if defined(BTA_AV_CO_CP_SCMS_T) && (BTA_AV_CO_CP_SCMS_T == TRUE)
+        do {
+            UINT8 *p = p_protect_info;
+
+            /* Content protection info - support SCMS-T */
+            *p_num_protect = 1;
+            *p++ = BTA_AV_CP_LOSC;
+            UINT16_TO_STREAM(p, BTA_AV_CP_SCMS_T_ID);
+        } while (0);
+#endif
+        /* Set up for SBC codec  for SRC*/
+        *p_codec_type = BTA_AV_CODEC_SBC;
+
+        /* This should not fail because we are using constants for parameters */
+        A2D_BldSbcInfo(AVDT_MEDIA_AUDIO, (tA2D_SBC_CIE *) &bta_av_co_sbc_caps, p_codec_info);
+        return TRUE;
+    } else if (tsep == AVDT_TSEP_SNK) {
+
+        *p_codec_type = BTA_AV_CODEC_VEND;
+        sts = A2DP_BuildInfoLDAC(AVDT_MEDIA_AUDIO,(tA2DP_LDAC_CIE*) &bta_av_co_ldac_caps, p_codec_info);
+        if(sts!=A2DP_SUCCESS) return FALSE;
         /* Codec is valid */
         return TRUE;
     } else {
@@ -768,7 +839,26 @@ UINT8 bta_av_co_audio_getconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
 
     return result;
 }
+UINT8 bta_av_co_audio_getconfig_aptx(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
+                                     UINT8 *p_codec_info, UINT8 *p_sep_info_idx, UINT8 seid, UINT8 *p_num_protect,
+                                     UINT8 *p_protect_info)
 
+{
+    APPL_TRACE_WARNING("%s(): bta_av_co_audio_getconfig##########",__func__);
+    return bta_av_co_audio_getconfig(hndl, codec_type,
+                                     p_codec_info, p_sep_info_idx, seid,p_num_protect,
+                                     p_protect_info);
+}
+UINT8 bta_av_co_audio_getconfig_ldac(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
+                                     UINT8 *p_codec_info, UINT8 *p_sep_info_idx, UINT8 seid, UINT8 *p_num_protect,
+                                     UINT8 *p_protect_info)
+
+{
+    APPL_TRACE_WARNING("%s(): bta_av_co_audio_getconfig##########",__func__);
+    return bta_av_co_audio_getconfig(hndl, codec_type,
+                                     p_codec_info, p_sep_info_idx, seid,p_num_protect,
+                                     p_protect_info);
+}
 /*******************************************************************************
  **
  ** Function         bta_av_co_audio_setconfig
@@ -1928,6 +2018,32 @@ const tBTA_AV_CO_FUNCTS bta_av_a2d_cos = {
     bta_av_co_audio_stop,
     bta_av_co_audio_src_data_path,
     bta_av_co_audio_delay
+};
+
+const tBTA_AV_CO_FUNCTS bta_av_a2d_cos_aptx = {
+        bta_av_co_audio_init_aptx,
+        bta_av_co_audio_disc_res,
+        bta_av_co_audio_getconfig_aptx,
+        bta_av_co_audio_setconfig,
+        bta_av_co_audio_open,
+        bta_av_co_audio_close,
+        bta_av_co_audio_start,
+        bta_av_co_audio_stop,
+        bta_av_co_audio_src_data_path,
+        bta_av_co_audio_delay
+};
+
+const tBTA_AV_CO_FUNCTS bta_av_a2d_cos_ldac = {
+        bta_av_co_audio_init_ldac,
+        bta_av_co_audio_disc_res,
+        bta_av_co_audio_getconfig_ldac,
+        bta_av_co_audio_setconfig,
+        bta_av_co_audio_open,
+        bta_av_co_audio_close,
+        bta_av_co_audio_start,
+        bta_av_co_audio_stop,
+        bta_av_co_audio_src_data_path,
+        bta_av_co_audio_delay
 };
 
 #endif /* #if BTC_AV_INCLUDED */
