@@ -84,6 +84,7 @@ enum {
     BTA_AV_ROLE_CHANGE_EVT,
     BTA_AV_AVDT_DELAY_RPT_EVT,
     BTA_AV_ACP_CONNECT_EVT,
+    BTA_AV_STR_RECONFIG_IND_EVT,
 
     /* these events are handled outside of the state machine */
     BTA_AV_API_ENABLE_EVT,
@@ -330,6 +331,7 @@ typedef struct {
     UINT8               av_handle;         /* AVDTP handle */
     tBTA_AV_CODEC       codec_type;        /* codec type */
     UINT8               tsep;              /* SEP type of local SEP */
+    UINT32              vendor_id;         /* Vendor ID */
     tBTA_AV_DATA_CBACK  *p_app_data_cback; /* Application callback for media packets */
 } tBTA_AV_SEP;
 
@@ -457,6 +459,7 @@ typedef struct {
     BOOLEAN             no_rtp_hdr;     /* TRUE if add no RTP header*/
     UINT8               disc_rsn;       /* disconenction reason */
     UINT16              uuid_int;       /*intended UUID of Initiator to connect to */
+    UINT32              vendorID;
 } tBTA_AV_SCB;
 
 #define BTA_AV_RC_ROLE_MASK     0x10
@@ -682,6 +685,7 @@ extern void bta_av_role_res (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data);
 extern void bta_av_delay_co (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data);
 extern void bta_av_open_at_inc (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data);
 extern void bta_av_open_fail_sdp (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data);
+extern void bta_av_reconfig_inc (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data);
 
 /* ssm action functions - vdp specific */
 extern void bta_av_do_disc_vdp (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data);

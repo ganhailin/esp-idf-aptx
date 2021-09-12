@@ -591,7 +591,8 @@ static void bta_av_api_register(tBTA_AV_DATA *p_data)
         cs.p_data_cback = NULL;
         cs.p_report_cback = NULL;
         */
-        cs.nsc_mask = AVDT_NSC_RECONFIG |
+        //cs.nsc_mask = AVDT_NSC_RECONFIG |
+        cs.nsc_mask =
                       ((bta_av_cb.features & BTA_AV_FEAT_PROTECT) ? 0 : AVDT_NSC_SECURITY);
         APPL_TRACE_DEBUG("nsc_mask: 0x%x\n", cs.nsc_mask);
 
@@ -641,7 +642,11 @@ static void bta_av_api_register(tBTA_AV_DATA *p_data)
 #endif
                 if (AVDT_CreateStream(&p_scb->seps[index].av_handle, &cs) == AVDT_SUCCESS) {
                     p_scb->seps[index].codec_type = codec_type;
-
+                    p_scb->seps[index].vendor_id =
+                            ((UINT32)cs.cfg.codec_info[3])|
+                            (((UINT32)cs.cfg.codec_info[4])<<8)|
+                            (((UINT32)cs.cfg.codec_info[5])<<16)|
+                            (((UINT32)cs.cfg.codec_info[6])<<24);
 #if (BTA_AV_SINK_INCLUDED == TRUE)
                     p_scb->seps[index].tsep = cs.tsep;
                     if (cs.tsep == AVDT_TSEP_SNK) {
@@ -1289,6 +1294,7 @@ char *bta_av_evt_code(UINT16 evt_code)
     case BTA_AV_ROLE_CHANGE_EVT: return "ROLE_CHANGE";
     case BTA_AV_AVDT_DELAY_RPT_EVT: return "AVDT_DELAY_RPT";
     case BTA_AV_ACP_CONNECT_EVT: return "ACP_CONNECT";
+    case BTA_AV_STR_RECONFIG_IND_EVT: return "STR_RECONFIG_IND";
 
     case BTA_AV_API_ENABLE_EVT: return "API_ENABLE";
     case BTA_AV_API_REGISTER_EVT: return "API_REG";
@@ -1374,7 +1380,8 @@ char *bta_av_action_code(UINT16 action_code)
     case 46: return "BTA_AV_DELAY_CO";
     case 47: return "BTA_AV_OPEN_AT_INC";
     case 48: return "BTA_AV_OPEN_FAIL_SDP";
-    case 49: return "NULL";
+    case 49: return "BTA_AV_RECONFIG_INC";
+    case 50: return "NULL";
     default: return "unknown";
     }
 }

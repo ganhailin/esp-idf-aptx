@@ -96,6 +96,7 @@ enum {
     BTA_AV_DELAY_CO,
     BTA_AV_OPEN_AT_INC,
     BTA_AV_OPEN_FAIL_SDP,
+    BTA_AV_RECONFIG_INC,
     BTA_AV_NUM_SACTIONS
 };
 
@@ -144,7 +145,8 @@ static const UINT8 bta_av_sst_init[][BTA_AV_NUM_COLS] = {
     /* AVDT_DISCONNECT_EVT */   {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INIT_SST },
     /* ROLE_CHANGE_EVT*/        {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INIT_SST },
     /* AVDT_DELAY_RPT_EVT */    {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INIT_SST },
-    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INCOMING_SST }
+    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INCOMING_SST },
+    /* STR_RECONFIG_IND_EVT */  {BTA_AV_SETCONFIG_REJ,  BTA_AV_SIGNORE,        BTA_AV_INIT_SST }
 };
 
 /* state table for incoming state */
@@ -183,7 +185,8 @@ static const UINT8 bta_av_sst_incoming[][BTA_AV_NUM_COLS] = {
     /* AVDT_DISCONNECT_EVT */   {BTA_AV_CCO_CLOSE,      BTA_AV_CLEANUP,        BTA_AV_INIT_SST },
     /* ROLE_CHANGE_EVT*/        {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INCOMING_SST },
     /* AVDT_DELAY_RPT_EVT */    {BTA_AV_DELAY_CO,       BTA_AV_SIGNORE,        BTA_AV_INCOMING_SST },
-    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INCOMING_SST }
+    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_INCOMING_SST },
+    /* STR_RECONFIG_IND_EVT */  {BTA_AV_SETCONFIG_REJ,  BTA_AV_SIGNORE,        BTA_AV_INCOMING_SST }
 };
 
 /* state table for opening state */
@@ -222,7 +225,8 @@ static const UINT8 bta_av_sst_opening[][BTA_AV_NUM_COLS] = {
     /* AVDT_DISCONNECT_EVT */   {BTA_AV_CONN_FAILED,    BTA_AV_SIGNORE,        BTA_AV_INIT_SST },
     /* ROLE_CHANGE_EVT*/        {BTA_AV_ROLE_RES,       BTA_AV_SIGNORE,        BTA_AV_OPENING_SST },
     /* AVDT_DELAY_RPT_EVT */    {BTA_AV_DELAY_CO,       BTA_AV_SIGNORE,        BTA_AV_OPENING_SST },
-    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_OPENING_SST }
+    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_OPENING_SST },
+    /* STR_RECONFIG_IND_EVT */  {BTA_AV_SETCONFIG_REJ,  BTA_AV_SIGNORE,        BTA_AV_OPENING_SST }
 };
 
 /* state table for open state */
@@ -261,7 +265,8 @@ static const UINT8 bta_av_sst_open[][BTA_AV_NUM_COLS] = {
     /* AVDT_DISCONNECT_EVT */   {BTA_AV_STR_CLOSED,     BTA_AV_SIGNORE,        BTA_AV_INIT_SST },
     /* ROLE_CHANGE_EVT*/        {BTA_AV_ROLE_RES,       BTA_AV_SIGNORE,        BTA_AV_OPEN_SST },
     /* AVDT_DELAY_RPT_EVT */    {BTA_AV_DELAY_CO,       BTA_AV_SIGNORE,        BTA_AV_OPEN_SST },
-    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_OPEN_SST }
+    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_OPEN_SST },
+    /* STR_RECONFIG_IND_EVT */  {BTA_AV_RECONFIG_INC,   BTA_AV_SIGNORE,        BTA_AV_OPEN_SST }
 };
 
 /* state table for reconfig state */
@@ -300,7 +305,8 @@ static const UINT8 bta_av_sst_rcfg[][BTA_AV_NUM_COLS] = {
     /* AVDT_DISCONNECT_EVT */   {BTA_AV_RCFG_DISCNTD,   BTA_AV_SIGNORE,        BTA_AV_RCFG_SST },
     /* ROLE_CHANGE_EVT*/        {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_RCFG_SST },
     /* AVDT_DELAY_RPT_EVT */    {BTA_AV_DELAY_CO,       BTA_AV_SIGNORE,        BTA_AV_RCFG_SST },
-    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_RCFG_SST }
+    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_RCFG_SST },
+    /* STR_RECONFIG_IND_EVT */  {BTA_AV_SETCONFIG_REJ,  BTA_AV_SIGNORE,        BTA_AV_RCFG_SST }
 };
 
 /* state table for closing state */
@@ -339,7 +345,8 @@ static const UINT8 bta_av_sst_closing[][BTA_AV_NUM_COLS] = {
     /* AVDT_DISCONNECT_EVT */   {BTA_AV_STR_CLOSED,     BTA_AV_SIGNORE,        BTA_AV_INIT_SST },
     /* ROLE_CHANGE_EVT*/        {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_CLOSING_SST },
     /* AVDT_DELAY_RPT_EVT */    {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_CLOSING_SST },
-    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_CLOSING_SST }
+    /* ACP_CONNECT_EVT */       {BTA_AV_SIGNORE,        BTA_AV_SIGNORE,        BTA_AV_CLOSING_SST },
+    /* STR_RECONFIG_IND_EVT */  {BTA_AV_SETCONFIG_REJ,  BTA_AV_SIGNORE,        BTA_AV_CLOSING_SST }
 };
 
 /* type for state table */

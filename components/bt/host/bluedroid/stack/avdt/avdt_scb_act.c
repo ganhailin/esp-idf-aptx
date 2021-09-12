@@ -35,7 +35,9 @@
 
 // add by nishi
 #include "stack/a2d_api.h"
-
+//add by hailin
+#include "stack/a2dp_vendor_ldac.h"
+#include "stack/a2dp_vendor_aptx.h"
 
 #if (defined(AVDT_INCLUDED) && AVDT_INCLUDED == TRUE)
 
@@ -247,12 +249,12 @@ void avdt_scb_hdl_open_rsp(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 *******************************************************************************/
 void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 {
-    UINT8   *p, *p_start,*p0;
+    UINT8   *p, *p_start;
     UINT8   o_v, o_p, o_x, o_cc;
     UINT8   m_pt;
     UINT8   marker;
     UINT16  seq;
-    UINT32  time_stamp;
+    UINT32  time_stamp=0;
     UINT16  offset;
     UINT16  ex_len;
     UINT8   pad_len = 0;
@@ -264,19 +266,22 @@ void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 
     AVDT_TRACE_DEBUG("\tbefore p=%p",p);
 
+    uint8_t codecType=p_scb->cs.cfg.codec_info[AVDT_CODEC_TYPE_INDEX];
+    uint8_t* t=p_scb->cs.cfg.codec_info+3;
+    uint32_t vendorID=0;
+    uint16_t codecID=0;
+    STREAM_TO_UINT32(vendorID,t);
+    STREAM_TO_UINT16(codecID,t);
 
     // APTX codec ������  add by nishi 2019.2.5
-    if(p_scb->cs.cfg.codec_info[AVDT_CODEC_TYPE_INDEX]==VDP_MEDIA_CT_VEND){
-        AVDT_TRACE_WARNING("Fix this at avdt_scb_hdl_pkt_no_frag");
+    if(codecType==VDP_MEDIA_CT_VEND&&vendorID==A2DP_APTX_VENDOR_ID){
+        //AVDT_TRACE_DEBUG("APTXPackage");
+        pad_len=0;
+        offset=0;
+        m_pt=0;
+        seq=0;
+        marker=0;
         //TODO:fix this
-    	pad_len=0;
-    	offset=0;
-    	p0  = (UINT8 *)(p_data->p_pkt + 1);
-
-    	BE_STREAM_TO_UINT32(time_stamp, p0);
-    	m_pt=0;
-    	seq=0;
-    	marker=0;
     }
     // SBC codec ������
     else{
@@ -706,22 +711,57 @@ void avdt_scb_drop_pkt(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 *******************************************************************************/
 void avdt_scb_hdl_reconfig_cmd(tAVDT_SCB *p_scb, tAVDT_SCB_EVT *p_data)
 {
+    AVDT_TRACE_ERROR("%s not support reconfig cmd", __func__);
     /* if command not supported */
     if (p_scb->cs.nsc_mask & AVDT_NSC_RECONFIG) {
         /* send reject */
         p_data->msg.hdr.err_code = AVDT_ERR_NSC;
         p_data->msg.hdr.err_param = 0;
         avdt_scb_event(p_scb, AVDT_SCB_API_RECONFIG_RSP_EVT, p_data);
-    } else {
-        /* store requested configuration */
-        memcpy(&p_scb->req_cfg, p_data->msg.reconfig_cmd.p_cfg, sizeof(tAVDT_CFG));
-
-        /* call application callback */
-        (*p_scb->cs.p_ctrl_cback)(avdt_scb_to_hdl(p_scb),
-                                  NULL,
-                                  AVDT_RECONFIG_IND_EVT,
-                                  (tAVDT_CTRL *) &p_data->msg.reconfig_cmd);
+        return;
+    }else{
+        /* send accept anyway */
+        p_data->msg.hdr.err_code = 0;
+        p_data->msg.hdr.err_param = 0;
+        avdt_scb_event(p_scb, AVDT_SCB_API_RECONFIG_RSP_EVT, p_data);
+        return;
     }
+//    else {
+//        /* store requested configuration */
+//        memcpy(&p_scb->req_cfg, p_data->msg.reconfig_cmd.p_cfg, sizeof(tAVDT_CFG));
+//
+//        /* call application callback */
+//        (*p_scb->cs.p_ctrl_cback)(avdt_scb_to_hdl(p_scb),
+//                                  NULL,
+//                                  AVDT_RECONFIG_IND_EVT,
+//                                  (tAVDT_CTRL *) &p_data->msg.reconfig_cmd);
+//    }
+
+    tAVDT_CFG *p_cfg;
+
+    if (p_scb->in_use) {
+        p_cfg = p_data->msg.config_cmd.p_cfg;
+        if (p_scb->cs.cfg.codec_info[AVDT_CODEC_TYPE_INDEX] == p_cfg->codec_info[AVDT_CODEC_TYPE_INDEX]) {
+            /* copy info to scb */
+            p_scb->p_ccb = avdt_ccb_by_idx(p_data->msg.config_cmd.hdr.ccb_idx);
+            p_scb->peer_seid = p_data->msg.config_cmd.int_seid;
+            memcpy(&p_scb->req_cfg, p_cfg, sizeof(tAVDT_CFG));
+            /* call app callback */
+            (*p_scb->cs.p_ctrl_cback)(avdt_scb_to_hdl(p_scb), /* handle of scb- which is same as sep handle of bta_av_cb.p_scb*/
+                                      p_scb->p_ccb ? p_scb->p_ccb->peer_addr : NULL,
+                                      AVDT_RECONFIG_IND_EVT,
+                                      (tAVDT_CTRL *) &p_data->msg.config_cmd);
+        } else {
+            p_data->msg.hdr.err_code = AVDT_ERR_UNSUP_CFG;
+            p_data->msg.hdr.err_param = 0;
+            avdt_msg_send_rej(avdt_ccb_by_idx(p_data->msg.hdr.ccb_idx),
+                              p_data->msg.hdr.sig_id, &p_data->msg);
+        }
+    } else {
+        AVDT_TRACE_DEBUG("%s scp is not in use", __func__);
+        avdt_scb_rej_not_in_use(p_scb, p_data);
+    }
+
 }
 
 /*******************************************************************************

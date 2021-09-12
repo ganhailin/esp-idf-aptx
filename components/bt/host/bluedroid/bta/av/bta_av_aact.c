@@ -136,6 +136,7 @@ const tBTA_AV_SACT bta_av_a2d_action[] = {
     bta_av_delay_co,        /* BTA_AV_DELAY_CO */
     bta_av_open_at_inc,     /* BTA_AV_OPEN_AT_INC */
     bta_av_open_fail_sdp,   /* BTA_AV_OPEN_FAIL_SDP */
+    bta_av_reconfig_inc,   /* BTA_AV_RECONFIG_INC */
     NULL
 };
 
@@ -184,7 +185,7 @@ static const UINT16 bta_av_stream_evt_ok[] = {
     BTA_AV_STR_CLOSE_EVT,           /* AVDT_CLOSE_CFM_EVT */
     BTA_AV_STR_CLOSE_EVT,           /* AVDT_CLOSE_IND_EVT */
     BTA_AV_STR_RECONFIG_CFM_EVT,    /* AVDT_RECONFIG_CFM_EVT */
-    0,                              /* AVDT_RECONFIG_IND_EVT */
+    BTA_AV_STR_RECONFIG_IND_EVT,    /* AVDT_RECONFIG_IND_EVT */
     BTA_AV_STR_SECURITY_CFM_EVT,    /* AVDT_SECURITY_CFM_EVT */
     BTA_AV_STR_SECURITY_IND_EVT,    /* AVDT_SECURITY_IND_EVT */
     BTA_AV_STR_WRITE_CFM_EVT,       /* AVDT_WRITE_CFM_EVT */
@@ -211,7 +212,7 @@ static const UINT16 bta_av_stream_evt_fail[] = {
     BTA_AV_STR_CLOSE_EVT,           /* AVDT_CLOSE_CFM_EVT */
     BTA_AV_STR_CLOSE_EVT,           /* AVDT_CLOSE_IND_EVT */
     BTA_AV_STR_RECONFIG_CFM_EVT,    /* AVDT_RECONFIG_CFM_EVT */
-    0,                              /* AVDT_RECONFIG_IND_EVT */
+    BTA_AV_STR_RECONFIG_IND_EVT,    /* AVDT_RECONFIG_IND_EVT */
     BTA_AV_STR_SECURITY_CFM_EVT,    /* AVDT_SECURITY_CFM_EVT */
     BTA_AV_STR_SECURITY_IND_EVT,    /* AVDT_SECURITY_IND_EVT */
     BTA_AV_STR_WRITE_CFM_EVT,       /* AVDT_WRITE_CFM_EVT */
@@ -536,6 +537,8 @@ static void bta_av_proc_stream_evt(UINT8 handle, BD_ADDR bd_addr, UINT8 event, t
                     memcpy(p_msg->msg.security_cfm.p_data, p_data->security_cfm.p_data, sec_len);
                 }
                 break;
+            case AVDT_RECONFIG_IND_EVT:
+                memcpy(&p_msg->cfg, p_data->config_ind.p_cfg, sizeof(tAVDT_CFG));
             case AVDT_SUSPEND_IND_EVT:
                 p_msg->msg.hdr.err_code = 0;
                 break;
@@ -778,6 +781,8 @@ static void bta_av_adjust_seps_idx(tBTA_AV_SCB *p_scb, UINT8 avdt_handle)
                          p_scb->seps[xx].av_handle, p_scb->seps[xx].codec_type);
         if ((p_scb->seps[xx].av_handle && p_scb->codec_type == p_scb->seps[xx].codec_type)
                 && (p_scb->seps[xx].av_handle == avdt_handle)) {
+            if((p_scb->codec_type==BTA_AV_CODEC_VEND) && (p_scb->vendorID!=p_scb->seps[xx].vendor_id))
+                continue;
             p_scb->sep_idx      = xx;
             p_scb->avdt_handle  = p_scb->seps[xx].av_handle;
             break;
@@ -1157,7 +1162,12 @@ void bta_av_config_ind (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
     memcpy(p_scb->cfg.codec_info, p_evt_cfg->codec_info, AVDT_CODEC_SIZE);
     p_scb->codec_type = p_evt_cfg->codec_info[BTA_AV_CODEC_TYPE_IDX];
     bta_av_save_addr(p_scb, p_data->str_msg.bd_addr);
-
+    if(p_scb->codec_type==BTA_AV_CODEC_VEND)
+        p_scb->vendorID =
+                ((UINT32)p_evt_cfg->codec_info[3])|
+                (((UINT32)p_evt_cfg->codec_info[4])<<8)|
+                (((UINT32)p_evt_cfg->codec_info[5])<<16)|
+                (((UINT32)p_evt_cfg->codec_info[6])<<24);
     /* Clear collision mask */
     p_scb->coll_mask = 0;
     bta_sys_stop_timer(&bta_av_cb.acp_sig_tmr);
@@ -1175,6 +1185,103 @@ void bta_av_config_ind (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
             /* or the peer requests for a service we do not support */
             ((psc_mask != p_scb->cfg.psc_mask) &&
              (psc_mask != (p_scb->cfg.psc_mask & ~AVDT_PSC_DELAY_RPT))) ) {
+        setconfig.hndl      = p_scb->hndl; /* we may not need this */
+        setconfig.err_code  = AVDT_ERR_UNSUP_CFG;
+        bta_av_ssm_execute(p_scb, BTA_AV_CI_SETCONFIG_FAIL_EVT, (tBTA_AV_DATA *) &setconfig);
+    } else {
+        p_info = &p_scb->sep_info[0];
+        p_info->in_use = 0;
+        p_info->media_type = p_scb->media_type;
+        p_info->seid = p_data->str_msg.msg.config_ind.int_seid;
+
+        /* Sep type of Peer will be oppsite role to our local sep */
+        if (local_sep == AVDT_TSEP_SRC) {
+            p_info->tsep = AVDT_TSEP_SNK;
+        } else if (local_sep == AVDT_TSEP_SNK) {
+            p_info->tsep = AVDT_TSEP_SRC;
+        }
+
+        p_scb->role      |= BTA_AV_ROLE_AD_ACP;
+        p_scb->cur_psc_mask = p_evt_cfg->psc_mask;
+        if (bta_av_cb.features & BTA_AV_FEAT_RCTG) {
+            p_scb->use_rc = TRUE;
+        } else {
+            p_scb->use_rc = FALSE;
+        }
+
+        p_scb->num_seps  = 1;
+        p_scb->sep_info_idx = 0;
+        APPL_TRACE_DEBUG("bta_av_config_ind: SEID: %d use_rc: %d cur_psc_mask:0x%x", p_info->seid, p_scb->use_rc, p_scb->cur_psc_mask);
+        /*  in case of A2DP SINK this is the first time peer data is being sent to co functions */
+        if (local_sep == AVDT_TSEP_SNK) {
+            p_scb->p_cos->setcfg(p_scb->hndl, p_scb->codec_type,
+                                 p_evt_cfg->codec_info,
+                                 p_info->seid,
+                                 p_scb->peer_addr,
+                                 p_evt_cfg->num_protect,
+                                 p_evt_cfg->protect_info,
+                                 AVDT_TSEP_SNK,
+                                 p_msg->handle);
+        } else {
+            p_scb->p_cos->setcfg(p_scb->hndl, p_scb->codec_type,
+                                 p_evt_cfg->codec_info,
+                                 p_info->seid,
+                                 p_scb->peer_addr,
+                                 p_evt_cfg->num_protect,
+                                 p_evt_cfg->protect_info,
+                                 AVDT_TSEP_SRC,
+                                 p_msg->handle);
+        }
+    }
+}
+
+/*******************************************************************************
+**
+** Function         bta_av_reconfig_ind
+**
+** Description      Handle a stream configuration indication from the peer.
+**
+** Returns          void
+**
+*******************************************************************************/
+void bta_av_reconfig_inc (tBTA_AV_SCB *p_scb, tBTA_AV_DATA *p_data)
+{
+    tBTA_AV_CI_SETCONFIG setconfig;
+    tAVDT_SEP_INFO       *p_info;
+    tAVDT_CFG            *p_evt_cfg = &p_data->str_msg.cfg;
+    UINT8   psc_mask = (p_evt_cfg->psc_mask | p_scb->cfg.psc_mask);
+    UINT8 local_sep;    /* sep type of local handle on which connection was received */
+    tBTA_AV_STR_MSG  *p_msg = (tBTA_AV_STR_MSG *)p_data;
+    UNUSED(p_data);
+
+    local_sep = bta_av_get_scb_sep_type(p_scb, p_msg->handle);
+    p_scb->avdt_label = p_data->str_msg.msg.hdr.label;
+    memcpy(p_scb->cfg.codec_info, p_evt_cfg->codec_info, AVDT_CODEC_SIZE);
+    p_scb->codec_type = p_evt_cfg->codec_info[BTA_AV_CODEC_TYPE_IDX];
+    bta_av_save_addr(p_scb, p_data->str_msg.bd_addr);
+    if(p_scb->codec_type==BTA_AV_CODEC_VEND)
+        p_scb->vendorID =
+                ((UINT32)p_evt_cfg->codec_info[3])|
+                (((UINT32)p_evt_cfg->codec_info[4])<<8)|
+                (((UINT32)p_evt_cfg->codec_info[5])<<16)|
+                (((UINT32)p_evt_cfg->codec_info[6])<<24);
+    /* Clear collision mask */
+    p_scb->coll_mask = 0;
+    bta_sys_stop_timer(&bta_av_cb.acp_sig_tmr);
+
+    // add by nishi
+    APPL_TRACE_DEBUG("bta_av_reconfig_inc: #1 p_evt_cfg->num_codec=%x",p_evt_cfg->num_codec);
+    APPL_TRACE_DEBUG("bta_av_reconfig_inc: #2 p_evt_cfg->codec_info[0]-[9]=%x,%x,%x,%x,%x,%x,%x,%x,%x,%x",
+                     p_evt_cfg->codec_info[0],p_evt_cfg->codec_info[1],p_evt_cfg->codec_info[2],
+                     p_evt_cfg->codec_info[3],p_evt_cfg->codec_info[4],p_evt_cfg->codec_info[5],
+                     p_evt_cfg->codec_info[6],p_evt_cfg->codec_info[7],p_evt_cfg->codec_info[8],
+                     p_evt_cfg->codec_info[9]);
+
+    /* if no codec parameters in configuration, fail */
+    if ((p_evt_cfg->num_codec == 0) ||
+        /* or the peer requests for a service we do not support */
+        ((psc_mask != p_scb->cfg.psc_mask) &&
+         (psc_mask != (p_scb->cfg.psc_mask & ~AVDT_PSC_DELAY_RPT))) ) {
         setconfig.hndl      = p_scb->hndl; /* we may not need this */
         setconfig.err_code  = AVDT_ERR_UNSUP_CFG;
         bta_av_ssm_execute(p_scb, BTA_AV_CI_SETCONFIG_FAIL_EVT, (tBTA_AV_DATA *) &setconfig);

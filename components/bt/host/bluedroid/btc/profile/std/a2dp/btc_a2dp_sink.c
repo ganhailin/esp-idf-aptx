@@ -49,7 +49,7 @@
 
 //add by hailin for ldac
 #include "ldac_codec_api.h"
-
+UINT8 codecinfobuffered[AVDT_CODEC_SIZE]={0};
 // for watch dog diable by nishi
 #include "esp_int_wdt.h"
 #include "esp_task_wdt.h"
@@ -206,6 +206,15 @@ static inline void btc_a2d_cb_to_app(esp_a2d_cb_event_t event, esp_a2d_cb_param_
     if (btc_aa_cb) {
         btc_aa_cb(event, param);
     }
+}
+
+static void btc_a2d_cb_setmedia(UINT8 type,UINT8* data){
+    esp_a2d_cb_param_t a2d;
+    a2d.audio_cfg.mcc.type=type;
+    memcpy(&(a2d.audio_cfg.mcc.cie),data,sizeof(a2d.audio_cfg.mcc.cie));
+    btc_a2d_cb_to_app(ESP_A2D_AUDIO_CFG_EVT,&a2d);
+
+
 }
 
 /*****************************************************************************
@@ -1087,23 +1096,25 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
 {
     //p_msg->len--;
     //p_msg->offset++;
-
+    static int samplerate;
+    static const int sampleRateIdToFrequency[] = { 44100, 48000, 88200, 96000 };
+    static tA2DP_LDAC_CIE a2dp_ldac_local_config = {
+            A2DP_LDAC_VENDOR_ID,               /* vendorId */
+            A2DP_LDAC_CODEC_ID_BLUETOOTH,      /* codecId */
+            A2DP_LDAC_SAMPLERATE_48000,        /* sampleRate */
+            A2DP_LDAC_CHANNELS_STEREO,         /* channelMode */
+            BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 /* bits_per_sample */
+    };
     int count;
     UINT32 pcmBytes, availPcmBytes;
     OI_INT16 *pcmDataPointer = a2dp_sink_local_param.pcmData; /*Will be overwritten on next packet receipt*/
     OI_STATUS status;
 
+    UINT8 num_of_frame= (*(((UINT8 *)(p_msg + 1)) +p_msg->offset))&0xf;
+    UINT8 *start_frame = (((UINT8 *)(p_msg + 1)) +p_msg->offset)+1;
+    UINT32 frame_len = p_msg->len-1;
 
-    UINT8 *sbc_start_frame = ((UINT8 *)(p_msg + 1) +p_msg->offset+ 12 );
-
-    UINT32 sbc_frame_len = p_msg->len-(12);
-    if(sbc_start_frame[1]==0xaa)
-    {
-        sbc_start_frame+=1;
-        sbc_frame_len-=1;
-        APPL_TRACE_DEBUG(" LDAC , fix frame flag");
-    }
-    APPL_TRACE_DEBUG(" LDAC , sbc_frame_len %d ,offset %d", sbc_frame_len,sbc_start_frame-(UINT8 *)p_msg);
+    APPL_TRACE_DEBUG(" LDAC , sbc_frame_len %d ,offset %d", frame_len,start_frame-(UINT8 *)p_msg);
 
 
     availPcmBytes = sizeof(a2dp_sink_local_param.pcmData);
@@ -1117,11 +1128,11 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
     UINT8 *c_p;
 
     // DEBUG by nishi
-//    APPL_TRACE_DEBUG("%s(): #1 start!",__func__);
-//    APPL_TRACE_DEBUG("\tp_msg->num_frames.=x%x, len=x%x, offset=x%x, layer_specific=x%x",
-//    		p_msg->num_frames_to_be_processed,p_msg->len,p_msg->offset,p_msg->layer_specific);
-//    APPL_TRACE_DEBUG("\tsbc_start_frame[0-5]=%x:%x:%x:%x:%x:%x",
-//    		sbc_start_frame[0],sbc_start_frame[1],sbc_start_frame[2],sbc_start_frame[3],sbc_start_frame[4],sbc_start_frame[5]);
+    APPL_TRACE_DEBUG("%s(): #1 start!",__func__);
+    APPL_TRACE_DEBUG("\tp_msg->num_frames.=x%x, len=x%x, offset=x%x, layer_specific=x%x",
+    		p_msg->num_frames_to_be_processed,p_msg->len,p_msg->offset,p_msg->layer_specific);
+    APPL_TRACE_DEBUG("\tsbc_start_frame[0-5]=%x:%x:%x:%x:%x:%x",
+    		start_frame[0],start_frame[1],start_frame[2],start_frame[3],start_frame[4],start_frame[5]);
 
     /* XXX: Check if the below check is correct, we are checking for peer to be sink when we are sink */
     if (btc_av_get_peer_sep() == AVDT_TSEP_SNK || (a2dp_sink_local_param.btc_aa_snk_cb.rx_flush)) {
@@ -1135,29 +1146,29 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
         return;
     }
 
-//    c_p=(UINT8 *)p_msg;
-//    APPL_TRACE_EVENT("p_msg[0-7] [8] data=[0-3]=%x:%x:%x:%x:%x:%x:%x:%x %x %x:%x:%x:%x",
-//    		c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7],c_p[8],
-//    		sbc_start_frame[0],sbc_start_frame[1],sbc_start_frame[2],sbc_start_frame[3]);
-//    c_p+=8;
-//    APPL_TRACE_EVENT("p_msg[8-15]=%x:%x:%x:%x:%x:%x:%x:%x",c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7]);
-//    c_p+=8;
-//    APPL_TRACE_EVENT("p_msg[16-24]=%x:%x:%x:%x:%x:%x:%x:%x",c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7]);
-//
-//    APPL_TRACE_EVENT(" LDAC , p_msg->len %d ,p_msg->offset %d", p_msg->len,p_msg->offset);
+    c_p=(UINT8 *)p_msg;
+    APPL_TRACE_EVENT("p_msg[0-7] [8] data=[0-3]=%x:%x:%x:%x:%x:%x:%x:%x %x %x:%x:%x:%x",
+    		c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7],c_p[8],
+    		start_frame[0],start_frame[1],start_frame[2],start_frame[3]);
+    c_p+=8;
+    APPL_TRACE_EVENT("p_msg[8-15]=%x:%x:%x:%x:%x:%x:%x:%x",c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7]);
+    c_p+=8;
+    APPL_TRACE_EVENT("p_msg[16-24]=%x:%x:%x:%x:%x:%x:%x:%x",c_p[0],c_p[1],c_p[2],c_p[3],c_p[4],c_p[5],c_p[6],c_p[7]);
+
+    APPL_TRACE_EVENT(" LDAC , p_msg->len %d ,p_msg->offset %d", p_msg->len,p_msg->offset);
 
 
 
 
 
     offset=0;
-    while(sbc_frame_len>0)
+    while(num_of_frame--)
     {
         int bytesUsed = 0;
-        int ret = ldacDecode( ldacctx, (unsigned char *)(sbc_start_frame + offset), (int16_t *)pcmDataPointer, &bytesUsed );
+        int ret = ldacDecode( ldacctx, (unsigned char *)(start_frame + offset), (int16_t *)pcmDataPointer, &bytesUsed );
         if( ret < 0 ){
             APPL_TRACE_ERROR("%s(): LDAC decode error!",__func__);
-            processed=sbc_frame_len;
+            processed=frame_len;
         }
         else
             processed=bytesUsed;
@@ -1168,10 +1179,10 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
         APPL_TRACE_DEBUG(" LDAC , availPcmBytes %d", availPcmBytes);
 
         offset += processed;
-        sbc_frame_len -= processed;
+        frame_len -= processed;
 
         p_msg->offset = offset;				// BT_SBC_HDR->offset �I�t�Z�b�g�̍X�V
-        p_msg->len = sbc_frame_len;			// BT_SBC_HDR->len �f�[�^���̍X�V
+        p_msg->len = frame_len;			// BT_SBC_HDR->len �f�[�^���̍X�V
 
         // ��x������ break�����܂���B
         //break;
@@ -1187,6 +1198,27 @@ static void btc_a2dp_sink_handle_inc_media_ldac(tBT_SBC_HDR *p_msg)
     //len0=BTC_SBC_DEC_PCM_DATA_LEN * sizeof(OI_INT16);
     len=sizeof(a2dp_sink_local_param.pcmData) - availPcmBytes;
     //len=pcmDataPointer-btc_sbc_pcm_data;
+    int newsamplerate=sampleRateIdToFrequency[ldacctx->frame.sampleRateId];
+    if(newsamplerate!=samplerate)
+    {
+        samplerate=newsamplerate;
+        switch (samplerate) {
+            case 44100:
+                a2dp_ldac_local_config.sampleRate=A2DP_LDAC_SAMPLERATE_44100;break;
+            case 48000:
+                a2dp_ldac_local_config.sampleRate=A2DP_LDAC_SAMPLERATE_48000;break;
+            case 88200:
+                a2dp_ldac_local_config.sampleRate=A2DP_LDAC_SAMPLERATE_88200;break;
+            case 96000:
+                a2dp_ldac_local_config.sampleRate=A2DP_LDAC_SAMPLERATE_96000;break;
+            default:
+                break;
+        }
+        UINT8 tempbuf[11];
+        A2DP_BuildInfoLDAC(0,&a2dp_ldac_local_config,tempbuf);
+        btc_a2d_cb_setmedia(0xff,tempbuf+3);
+    }
+
     btc_a2d_data_cb_to_app((uint8_t *)a2dp_sink_local_param.pcmData, len);
 
     // DEBUG by nishi
